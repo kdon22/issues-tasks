@@ -13,7 +13,8 @@
     "prisma:studio": "cd apps/web && npx prisma studio",
     "db:reset": "cd apps/web && npx prisma db push --force-reset",
     "setup-workspace": "cd apps/web && npx tsx scripts/setup-workspace.ts",
-    "seed": "tsx apps/web/prisma/seed.ts"
+    "seed": "tsx apps/web/prisma/seed.ts",
+    "validate:trpc": "tsx apps/web/scripts/validate-trpc.ts"
   },
   "private": true,
   "workspaces": [
@@ -23,17 +24,23 @@
   ],
   "dependencies": {
     "@auth/core": "^0.37.4",
-    "@headlessui/react": "^1.7.18",
-    "@heroicons/react": "^2.1.1",
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.0.18",
+    "@radix-ui/react-tooltip": "^1.0.7",
+    "@tanstack/react-query": "4.29.19",
+    "@trpc/client": "10.34.0",
+    "@trpc/next": "10.34.0",
+    "@trpc/react-query": "10.34.0",
+    "@trpc/server": "10.34.0",
     "argon2": "^0.41.1",
     "clsx": "^2.1.1",
     "credentials": "link:next-auth/providers/credentials",
     "jose": "^5.9.6",
-    "next": "14.2.16",
+    "next": "^14.2.16",
     "next-auth": "^4.24.11",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "superjson": "^2.2.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "superjson": "1.13.1",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
@@ -55,20 +62,16 @@
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
     "@tailwindcss/forms": "^0.5.9",
-    "@tanstack/react-query": "^4.36.1",
-    "@tanstack/react-query-devtools": "^4.36.1",
     "@testing-library/react": "15.0.6",
     "@tiptap/pm": "^2.10.4",
     "@tiptap/react": "^2.10.4",
     "@tiptap/starter-kit": "^2.10.4",
-    "@trpc/client": "^10.45.2",
-    "@trpc/react-query": "^10.45.2",
-    "@trpc/server": "^10.45.2",
     "@types/bcryptjs": "^2.4.6",
+    "@types/dotenv": "^8.2.3",
     "@types/jest": "^29.5.12",
-    "@types/node": "18.16.9",
-    "@types/react": "18.3.1",
-    "@types/react-dom": "18.3.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
     "autoprefixer": "^10.4.20",
     "babel-jest": "^29.7.0",
     "bcryptjs": "^2.4.3",
@@ -97,12 +100,17 @@
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",
     "tsx": "^4.19.2",
-    "typescript": "~5.6.2",
+    "typescript": "^5.0.0",
     "typescript-eslint": "^8.13.0",
     "zod": "^3.24.1",
     "zustand": "^5.0.2"
   },
   "prisma": {
     "seed": "pnpm seed"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "pnpm validate:trpc"
+    }
   }
 }

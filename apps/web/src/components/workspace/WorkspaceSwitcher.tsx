@@ -1,10 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { trpc } from '@/lib/trpc/client'
+import { trpc, type RouterOutputs } from '@/lib/trpc/client'
 import { useRouter } from 'next/navigation'
 import { Dialog } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
+import { type TRPCClientError } from '@trpc/client'
+import { type AppRouter } from '@/lib/trpc/routers'
+
+// Add type for workspace
+type Workspace = RouterOutputs['auth']['getWorkspaces'][0]
 
 export function WorkspaceSwitcher() {
   const router = useRouter()
@@ -17,12 +22,12 @@ export function WorkspaceSwitcher() {
   const { data: workspaces, isLoading } = trpc.auth.getWorkspaces.useQuery()
   
   const switchMutation = trpc.auth.switchWorkspace.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data: { redirectTo: string }) => {
       if (data.redirectTo) {
         window.location.href = data.redirectTo
       }
     },
-    onError: (error) => setError(error.message),
+    onError: (error: TRPCClientError<AppRouter>) => setError(error.message),
   })
 
   const createMutation = trpc.workspace.create.useMutation({
@@ -32,7 +37,7 @@ export function WorkspaceSwitcher() {
         window.location.href = `/${data.url}/my-issues`
       }
     },
-    onError: (error) => setError(error.message),
+    onError: (error: TRPCClientError<AppRouter>) => setError(error.message),
   })
 
   const handleSwitch = async (workspaceUrl: string) => {
@@ -89,7 +94,7 @@ export function WorkspaceSwitcher() {
               <div className="text-xs font-medium text-gray-500 px-2 py-1">
                 AVAILABLE WORKSPACES
               </div>
-              {workspaces?.map((workspace) => (
+              {workspaces?.map((workspace: Workspace) => (
                 <button
                   key={workspace.id}
                   onClick={() => handleSwitch(workspace.url)}
@@ -122,7 +127,7 @@ export function WorkspaceSwitcher() {
 
       {/* Create workspace dialog */}
       <Dialog
-        open={isCreating}
+        isOpen={isCreating}
         onClose={() => setIsCreating(false)}
         title="Create a new workspace"
       >

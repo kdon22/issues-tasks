@@ -1,12 +1,36 @@
-import { type CreateNextContextOptions } from '@trpc/server/adapters/next'
-import { prisma } from '@/lib/prisma'
+import { type FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch'
+import { prisma } from '../prisma'
+import { cookies } from 'next/headers'
 
-export async function createContext({ req, res }: CreateNextContextOptions) {
+interface Session {
+  user: {
+    id: string
+    email: string
+    name: string
+  }
+  workspace: {
+    id: string
+    url: string
+  }
+}
+
+export async function createContext(opts?: FetchCreateContextFnOptions) {
+  // Get session from cookies
+  const sessionCookie = cookies().get('session')
+  let session: Session | null = null
+
+  if (sessionCookie?.value) {
+    try {
+      session = JSON.parse(sessionCookie.value)
+    } catch {
+      session = null
+    }
+  }
+
   return {
-    req,
-    res,
     prisma,
-    session: null, // You'll populate this from your session management
+    session,
+    req: opts?.req,
   }
 }
 

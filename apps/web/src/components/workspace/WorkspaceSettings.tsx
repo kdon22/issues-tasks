@@ -1,18 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useParams } from 'next/navigation'
 import { GeneralSettings } from './GeneralSettings'
 import { trpc } from '@/lib/trpc/client'
-
-type Tab = 'general' | 'members' | 'billing'
+import { Transition } from '@headlessui/react'
 
 export function WorkspaceSettings() {
-  const [activeTab, setActiveTab] = useState<Tab>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing'>('general')
   const params = useParams()
   const workspaceUrl = params.workspaceUrl as string
 
-  const { data: workspace } = trpc.workspace.getByUrl.useQuery(
+  const { data: workspace, isLoading } = trpc.workspace.getByUrl.useQuery(
     { url: workspaceUrl },
     { enabled: !!workspaceUrl }
   )
@@ -38,12 +37,27 @@ export function WorkspaceSettings() {
             >
               General
             </button>
-            {/* Add more tabs as needed */}
           </nav>
         </div>
 
         <div className="flex-1">
-          {activeTab === 'general' && <GeneralSettings />}
+          {activeTab === 'general' && (
+            <Transition
+              as={Fragment}
+              show={true}
+              appear={true}
+              enter="transition-opacity duration-75"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="transition-opacity duration-150"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div>
+                <GeneralSettings workspace={workspace} />
+              </div>
+            </Transition>
+          )}
         </div>
       </div>
     </div>

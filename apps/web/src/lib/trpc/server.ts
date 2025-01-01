@@ -1,24 +1,22 @@
-import { initTRPC, TRPCError } from '@trpc/server'
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
+import { appRouter } from './routers'
+import { prisma } from '@/lib/prisma'
+import { getSession } from '@/lib/auth'
 import { type Context } from './context'
-import superjson from 'superjson'
 
-const t = initTRPC.context<Context>().create({
-  transformer: superjson
-})
+export async function createContext(): Promise<Context> {
+  const session = await getSession()
 
-export const router = t.router
-export const publicProcedure = t.procedure
-export const protectedProcedure = t.procedure.use(t.middleware(async ({ ctx, next }) => {
-  if (!ctx.user) {
-    throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'Not authenticated',
-    })
+  return {
+    prisma,
+    session,
   }
-  return next({
-    ctx: {
-      ...ctx,
-      user: ctx.user,
-    },
-  })
-})) 
+}
+
+export const handler = (request: Request) =>
+  fetchRequestHandler({
+    endpoint: '/api/trpc',
+    req: request,
+    router: appRouter,
+    createContext,
+  }) 

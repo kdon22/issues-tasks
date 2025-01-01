@@ -7,26 +7,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserStatus {
+  ACTIVE
+  PENDING
+  DISABLED
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
-  name          String
+  name          String?
   password      String
   nickname      String?
-  icon          String?
-  iconColor     String?
+  avatarType    String    @default("initials")
+  avatarIcon    String?
+  avatarColor   String?
+  avatarImageUrl String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   preferences   UserPreferences[]
   workspaces    WorkspaceMember[]
   teams         TeamMember[]
+  status        UserStatus  @default(ACTIVE)
 }
 
 model Workspace {
   id              String    @id @default(cuid())
   name            String
   url             String    @unique
-  icon            String?
+  avatarType      String    @default("initials")
+  avatarIcon      String?
+  avatarColor     String?
+  avatarImageUrl  String?
   fiscalYearStart String    @default("January")
   region          String    @default("United States")
   members         WorkspaceMember[]
@@ -55,13 +67,13 @@ model UserPreferences {
   userId          String
   workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   workspaceId     String
-  defaultHomeView String    @default("my-issues")
+  defaultHomeView String    @default("active-issues")
   fontSize        String    @default("default")
   usePointerCursor Boolean  @default(false)
   displayFullNames Boolean  @default(false)
   interfaceTheme  String    @default("system")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  firstDayOfWeek  String    @default("Monday")
+  useEmoticons    Boolean   @default(true)
 
   @@unique([userId, workspaceId])
 }

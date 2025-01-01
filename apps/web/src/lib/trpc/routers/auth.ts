@@ -1,16 +1,125 @@
 import { router, publicProcedure, protectedProcedure } from '../trpc'
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
-import { prisma } from '@/lib/prisma'
-import { compare } from 'bcryptjs'
+import { hash, compare } from 'bcryptjs'
 import { cookies } from 'next/headers'
-import { hash } from 'bcryptjs'
 
 export const authRouter = router({
+  signup: publicProcedure
+    .input(z.object({
+      name: z.string(),
+      email: z.string().email(),
+      password: z.string().min(6),
+      workspace: z.object({
+        name: z.string(),
+        url: z.string(),
+      }),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const hashedPassword = await hash(input.password, 12)
+
+      try {
+        const result = await ctx.prisma.$transaction(async (tx) => {
+          // Create user
+          const user = await tx.user.create({
+            data: {
+              name: input.name,
+              email: input.email,
+              password: hashedPassword,
+            },
+          })
+
+          // Create workspace
+          const workspace = await tx.workspace.create({
+            data: {
+              name: input.workspace.name,
+              url: input.workspace.url,
+              members: {
+                create: {
+                  userId: user.id,
+                  role: 'OWNER',
+                },
+              },
+            },
+          })
+
+          // Create preferences
+          await tx.userPreferences.create({
+            data: {
+              userId: user.id,
+              workspaceId: workspace.id,
+              defaultHomeView: 'my-issues',
+            },
+          })
+
+          return { user, workspace }
+        })
+
+        // Create session
+        const session = {
+          user: {
+            id: result.user.id,
+            email: result.user.email,
+            name: result.user.name,
+          },
+          workspace: {
+            id: result.workspace.id,
+            url: result.workspace.url,
+          },
+        }
+
+        cookies().set('session', JSON.stringify(session), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        })
+
+        return {
+          redirectTo: `/${result.workspace.url}/my-issues`,
+        }
+      } catch (error) {
+        if (error instanceof TRPCError) throw error
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'An error occurred during signup',
+        })
+      }
+    }),
+
+  logout: protectedProcedure
+    .mutation(async () => {
+      cookies().delete('session')
+      return {
+        redirectTo: '/login',
+      }
+    }),
+
+  refresh: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      if (!ctx.session) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Session expired',
+        })
+      }
+
+      // Extend session
+      cookies().set('session', JSON.stringify(ctx.session), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      })
+
+      return { success: true }
+    }),
+
   login: publicProcedure
     .input(z.object({
       email: z.string().email(),
       password: z.string(),
+      remember: z.boolean().optional().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
       try {
@@ -40,19 +149,8 @@ export const authRouter = router({
           })
         }
 
-        // Get default workspace (first one if no last accessed)
-        let defaultWorkspace = user.workspaces[0]?.workspace
-        if (!defaultWorkspace) {
-          // Fallback: get any workspace the user is a member of
-          defaultWorkspace = await ctx.prisma.workspace.findFirst({
-            where: {
-              members: {
-                some: { userId: user.id }
-              }
-            }
-          })
-        }
-
+        // Get default workspace
+        const defaultWorkspace = user.workspaces[0]?.workspace
         if (!defaultWorkspace) {
           throw new TRPCError({
             code: 'NOT_FOUND',
@@ -73,214 +171,85 @@ export const authRouter = router({
           },
         }
 
-        // Set session cookie
+        // Set cookie with expiration based on remember me
+        const expiresIn = input.remember 
+          ? 30 * 24 * 60 * 60 * 1000  // 30 days
+          : 24 * 60 * 60 * 1000       // 1 day
+
         cookies().set('session', JSON.stringify(session), {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
-          expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          expires: new Date(Date.now() + expiresIn),
         })
 
         return {
           redirectTo: `/${defaultWorkspace.url}/my-issues`,
         }
       } catch (error) {
-        console.error('Login error:', error)
         if (error instanceof TRPCError) throw error
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'An unexpected error occurred',
+          message: 'An error occurred during login',
         })
       }
     }),
 
-  // Add workspace switching
-  switchWorkspace: protectedProcedure
-    .input(z.object({
-      workspaceUrl: z.string(),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const workspace = await prisma.workspace.findUnique({
-          where: { url: input.workspaceUrl },
-          include: {
-            members: {
-              where: { userId: ctx.session.user.id },
-            },
-          },
-        })
-
-        if (!workspace || !workspace.members.length) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Workspace not found or access denied',
-          })
-        }
-
-        // Update session with new workspace
-        const sessionData = {
-          ...ctx.session,
-          workspace: {
-            id: workspace.id,
-            url: workspace.url,
-          },
-        }
-
-        // Update session cookie
-        cookies().set('session', JSON.stringify(sessionData), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 30 * 24 * 60 * 60,
-        })
-
-        // Update last accessed timestamp
-        await prisma.workspaceMember.update({
-          where: {
-            workspaceId_userId: {
-              workspaceId: workspace.id,
-              userId: ctx.session.user.id,
-            },
-          },
-          data: { updatedAt: new Date() },
-        })
-
-        return {
-          success: true,
-          redirectTo: `/${workspace.url}/my-issues`,
-        }
-      } catch (error) {
-        console.error('Workspace switch error:', error)
-        if (error instanceof TRPCError) throw error
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to switch workspace',
-        })
-      }
-    }),
-
-  // Get available workspaces
   getWorkspaces: protectedProcedure
     .query(async ({ ctx }) => {
-      const workspaces = await prisma.workspace.findMany({
+      return ctx.prisma.workspace.findMany({
         where: {
           members: {
-            some: { userId: ctx.session.user.id },
-          },
-        },
-        orderBy: [
-          { members: { _count: 'desc' } },
-          { createdAt: 'desc' },
-        ],
+            some: {
+              userId: ctx.session.user.id
+            }
+          }
+        }
       })
-      return workspaces
     }),
 
-  signup: publicProcedure
+  switchWorkspace: protectedProcedure
     .input(z.object({
-      name: z.string().min(1),
-      email: z.string().email(),
-      password: z.string().min(6),
-      workspace: z.object({
-        name: z.string().min(1),
-        url: z.string().min(1),
-      }),
+      workspaceUrl: z.string()
     }))
     .mutation(async ({ ctx, input }) => {
-      try {
-        // Check if email is already taken
-        const existingUser = await ctx.prisma.user.findUnique({
-          where: { email: input.email },
-        })
-
-        if (existingUser) {
-          throw new TRPCError({
-            code: 'CONFLICT',
-            message: 'Email already exists',
-          })
+      const workspace = await ctx.prisma.workspace.findFirst({
+        where: {
+          url: input.workspaceUrl,
+          members: {
+            some: {
+              userId: ctx.session.user.id
+            }
+          }
         }
+      })
 
-        // Check if workspace URL is available
-        const existingWorkspace = await ctx.prisma.workspace.findUnique({
-          where: { url: input.workspace.url },
-        })
-
-        if (existingWorkspace) {
-          throw new TRPCError({
-            code: 'CONFLICT',
-            message: 'Workspace URL is already taken',
-          })
-        }
-
-        // Create user and workspace in a transaction
-        const result = await ctx.prisma.$transaction(async (prisma) => {
-          // Create user
-          const user = await prisma.user.create({
-            data: {
-              name: input.name,
-              email: input.email,
-              password: await hash(input.password, 12),
-            },
-          })
-
-          // Create workspace
-          const workspace = await prisma.workspace.create({
-            data: {
-              name: input.workspace.name,
-              url: input.workspace.url,
-              members: {
-                create: {
-                  userId: user.id,
-                  role: 'OWNER',
-                },
-              },
-            },
-          })
-
-          // Create default preferences
-          await prisma.userPreferences.create({
-            data: {
-              userId: user.id,
-              workspaceId: workspace.id,
-              defaultHomeView: 'my-issues',
-            },
-          })
-
-          return { user, workspace }
-        })
-
-        // Create session
-        const session = {
-          user: {
-            id: result.user.id,
-            email: result.user.email,
-            name: result.user.name,
-          },
-          workspace: {
-            id: result.workspace.id,
-            url: result.workspace.url,
-          },
-        }
-
-        // Set session cookie
-        cookies().set('session', JSON.stringify(session), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        })
-
-        return {
-          redirectTo: `/${result.workspace.url}/my-issues`,
-        }
-      } catch (error) {
-        console.error('Signup error:', error)
-        if (error instanceof TRPCError) throw error
+      if (!workspace) {
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'An unexpected error occurred',
+          code: 'NOT_FOUND',
+          message: 'Workspace not found',
         })
+      }
+
+      // Update session with new workspace
+      const session = {
+        ...ctx.session,
+        workspace: {
+          id: workspace.id,
+          url: workspace.url,
+        }
+      }
+
+      // Update session cookie
+      cookies().set('session', JSON.stringify(session), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      })
+
+      return {
+        redirectTo: `/${workspace.url}/my-issues`
       }
     }),
 }) 

@@ -2,15 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { Checkbox } from '@/components/ui/Checkbox'
 import { trpc } from '@/lib/trpc/client'
 
 export function LoginForm() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
 
   const loginMutation = trpc.auth.login.useMutation({
@@ -25,7 +26,7 @@ export function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    loginMutation.mutate({ email, password })
+    loginMutation.mutate({ email, password, remember })
   }
 
   return (
@@ -47,17 +48,21 @@ export function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <div className="flex items-center">
+            <Checkbox
+              id="remember"
+              checked={remember}
+              onCheckedChange={(checked) => setRemember(checked === true)}
+            />
+            <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
+              Remember me
+            </label>
+          </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button type="submit" className="w-full" isLoading={loginMutation.isLoading}>
             Sign in
           </Button>
         </form>
-        <p className="mt-4 text-center text-sm text-gray-600">
-          Don't have an account?{' '}
-          <Link href="/signup" className="text-blue-600 hover:text-blue-500">
-            Sign up
-          </Link>
-        </p>
       </div>
     </div>
   )

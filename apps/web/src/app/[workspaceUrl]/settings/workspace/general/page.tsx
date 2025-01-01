@@ -1,9 +1,11 @@
-import { WorkspaceSettings } from '@/components/workspace/WorkspaceSettings'
+import { Metadata } from 'next'
+import { GeneralSettings } from '@/components/workspace/GeneralSettings'
+import { IconPickerButton } from '@/components/ui/IconPickerButton'
 
-export default function WorkspaceGeneralSettingsPage({
-  params,
-}: {
-  params: { workspaceUrl: string }
-}) {
-  return <WorkspaceSettings />
+export const metadata: Metadata = {
+  title: 'Workspace Settings - General',
+}
+
+export default function WorkspaceGeneralSettingsPage() {
+  return <GeneralSettings />
 } 

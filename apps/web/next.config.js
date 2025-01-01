@@ -2,19 +2,10 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@trpc/server', '@trpc/client', '@trpc/react-query'],
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        net: false,
-        fs: false,
-        tls: false,
-        crypto: false,
-      }
-    }
-    return config
-  },
+  transpilePackages: ['@trpc/server', '@trpc/client', '@trpc/react-query', '@tanstack/react-query'],
+  experimental: {
+    // Remove serverActions since it's now default
+  }
 }
 
 module.exports = nextConfig

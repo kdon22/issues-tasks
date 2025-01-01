@@ -1,18 +1,20 @@
 'use client'
 
-import { Sidebar } from '@/components/ui/Sidebar'
+import { TRPCProvider } from '@/lib/trpc/Provider'
+import { WorkspaceLayoutClient } from '@/components/ui/WorkspaceLayoutClient'
 
 export default function WorkspaceLayout({
   children,
+  params,
 }: {
   children: React.ReactNode
+  params: { workspaceUrl: string }
 }) {
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 overflow-auto bg-gray-50">
+    <TRPCProvider>
+      <WorkspaceLayoutClient>
         {children}
-      </div>
-    </div>
+      </WorkspaceLayoutClient>
+    </TRPCProvider>
   )
 } 

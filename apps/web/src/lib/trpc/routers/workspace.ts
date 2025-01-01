@@ -1,7 +1,9 @@
-import { router, protectedProcedure } from '../trpc'
+import { router, protectedProcedure, workspaceProcedure } from '../trpc'
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { slugify } from '@/lib/utils'
+import { cookies } from 'next/headers'
+import { type Workspace, type WorkspaceMember } from '@/types/workspace'
 
 export const workspaceRouter = router({
   create: protectedProcedure
@@ -11,20 +13,13 @@ export const workspaceRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       try {
-        // Generate URL-friendly slug if not provided
         const url = input.url || slugify(input.name)
-
-        // Check if URL is already taken
-        const existing = await ctx.prisma.workspace.findUnique({
-          where: { url }
+        
+        console.log('Creating workspace for user:', {
+          userId: ctx.session.user.id,
+          email: ctx.session.user.email,
+          url
         })
-
-        if (existing) {
-          throw new TRPCError({
-            code: 'CONFLICT',
-            message: 'This workspace URL is already taken'
-          })
-        }
 
         // Create workspace and add creator as owner
         const workspace = await ctx.prisma.workspace.create({
@@ -37,50 +32,54 @@ export const workspaceRouter = router({
                 role: 'OWNER'
               }
             }
+          },
+          include: {
+            members: {
+              include: {
+                user: true
+              }
+            }
           }
         })
 
-        // Create default preferences for user in this workspace
-        await ctx.prisma.userPreferences.create({
-          data: {
-            userId: ctx.session.user.id,
-            workspaceId: workspace.id,
-            defaultHomeView: 'my-issues'
-          }
-        })
+        console.log('Created workspace:', workspace)
+        console.log('With members:', workspace.members)
 
         return workspace
       } catch (error) {
         console.error('Workspace creation error:', error)
-        if (error instanceof TRPCError) throw error
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to create workspace'
-        })
+        throw error
       }
     }),
 
   // Get current workspace by URL
   getByUrl: protectedProcedure
-    .input(z.object({ url: z.string() }))
+    .input(z.object({
+      url: z.string()
+    }))
     .query(async ({ ctx, input }) => {
-      const workspace = await ctx.prisma.workspace.findUnique({
-        where: { url: input.url },
-        include: {
+      const workspace = await ctx.prisma.workspace.findFirst({
+        where: {
+          url: input.url,
           members: {
-            where: { userId: ctx.session.user.id }
+            some: {
+              userId: ctx.session.user.id
+            }
           }
+        },
+        include: {
+          members: true,
         }
       })
 
-      if (!workspace || !workspace.members.length) {
+      if (!workspace) {
         throw new TRPCError({
           code: 'NOT_FOUND',
-          message: 'Workspace not found or access denied',
+          message: 'Workspace not found'
         })
       }
 
-      return workspace
+      return workspace as WorkspaceWithMembers
     }),
 
   // Get user's workspaces
@@ -95,34 +94,33 @@ export const workspaceRouter = router({
       })
     }),
 
-  updateWorkspace: protectedProcedure
+  updateWorkspace: workspaceProcedure
     .input(z.object({
-      name: z.string().min(1),
+      workspaceId: z.string(),
+      name: z.string(),
+      url: z.string(),
+      fiscalYearStart: z.string(),
+      region: z.string(),
+      // Avatar fields
+      avatarType: z.enum(['initials', 'icon', 'image']).optional(),
+      avatarIcon: z.string().nullable(),
+      avatarColor: z.string().nullable(),
+      avatarImageUrl: z.string().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Verify user has permission
-      const member = await ctx.prisma.workspaceMember.findUnique({
-        where: {
-          workspaceId_userId: {
-            workspaceId: ctx.session.workspace.id,
-            userId: ctx.session.user.id,
-          },
+      return await ctx.prisma.workspace.update({
+        where: { id: input.workspaceId },
+        data: {
+          name: input.name,
+          url: input.url,
+          fiscalYearStart: input.fiscalYearStart,
+          region: input.region,
+          avatarType: input.avatarType,
+          avatarIcon: input.avatarIcon,
+          avatarColor: input.avatarColor,
+          avatarImageUrl: input.avatarImageUrl,
         },
       })
-
-      if (!member || !['OWNER', 'ADMIN'].includes(member.role)) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'You do not have permission to update this workspace',
-        })
-      }
-
-      const workspace = await ctx.prisma.workspace.update({
-        where: { id: ctx.session.workspace.id },
-        data: { name: input.name },
-      })
-
-      return workspace
     }),
 
   // Generate invite link
@@ -217,7 +215,7 @@ export const workspaceRouter = router({
       return invite.workspace
     }),
 
-  updateUrl: protectedProcedure
+  updateUrl: workspaceProcedure
     .input(z.object({
       url: z.string().min(1),
     }))
@@ -225,10 +223,11 @@ export const workspaceRouter = router({
       // Verify user has permission
       const member = await ctx.prisma.workspaceMember.findFirst({
         where: {
-          workspaceId: ctx.session.workspace.id,
-          userId: ctx.session.user.id,
-          role: { in: ['OWNER', 'ADMIN'] }
-        },
+          AND: [
+            { workspaceId: ctx.session.workspace.id },
+            { userId: ctx.session.user.id }
+          ]
+        }
       })
 
       if (!member) {
@@ -286,4 +285,159 @@ export const workspaceRouter = router({
 
       return workspace
     }),
+
+  switch: protectedProcedure
+    .input(z.object({
+      workspaceId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Verify user has access to workspace
+      const workspace = await ctx.prisma.workspace.findFirst({
+        where: {
+          id: input.workspaceId,
+          members: {
+            some: {
+              userId: ctx.session.user.id
+            }
+          }
+        }
+      })
+
+      if (!workspace) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Workspace not found',
+        })
+      }
+
+      // Update session with new workspace
+      const session = {
+        ...ctx.session,
+        workspace: {
+          id: workspace.id,
+          url: workspace.url,
+        }
+      }
+
+      // Update session cookie
+      cookies().set('session', JSON.stringify(session), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      })
+
+      return workspace
+    }),
+
+  getMembers: protectedProcedure
+    .input(z.object({ workspaceUrl: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const workspace = await ctx.prisma.workspace.findUnique({
+        where: { url: input.workspaceUrl },
+      })
+
+      if (!workspace) {
+        throw new TRPCError({ code: 'NOT_FOUND' })
+      }
+
+      return ctx.prisma.workspaceMember.findMany({
+        where: { workspaceId: workspace.id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              nickname: true,
+              avatarType: true,
+              avatarIcon: true,
+              avatarColor: true,
+              avatarImageUrl: true,
+              status: true,
+              createdAt: true,
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    }),
+
+  inviteMembers: protectedProcedure
+    .input(z.object({
+      workspaceUrl: z.string(),
+      emails: z.array(z.string().email()),
+      role: z.enum(['ADMIN', 'MEMBER', 'GUEST']),
+      teamIds: z.array(z.string()).optional()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const workspace = await ctx.prisma.workspace.findFirst({
+        where: {
+          url: input.workspaceUrl,
+          members: {
+            some: {
+              userId: ctx.session.user.id,
+              role: { in: ['OWNER', 'ADMIN'] }
+            }
+          }
+        }
+      })
+
+      if (!workspace) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to invite members'
+        })
+      }
+
+      // Create invites for each email
+      const invites = await Promise.all(
+        input.emails.map(async (email) => {
+          // Check if user already exists
+          const existingUser = await ctx.prisma.user.findUnique({
+            where: { email }
+          })
+
+          if (existingUser) {
+            // Add user directly to workspace if they exist
+            await ctx.prisma.workspaceMember.create({
+              data: {
+                workspaceId: workspace.id,
+                userId: existingUser.id,
+                role: input.role
+              }
+            })
+
+            // Add to teams if specified
+            if (input.teamIds?.length) {
+              await ctx.prisma.teamMember.createMany({
+                data: input.teamIds.map(teamId => ({
+                  teamId,
+                  userId: existingUser.id,
+                  role: 'MEMBER'
+                }))
+              })
+            }
+
+            return { email, status: 'ADDED' }
+          }
+
+          // Create invite for non-existing user
+          const invite = await ctx.prisma.invite.create({
+            data: {
+              email,
+              role: input.role,
+              workspaceId: workspace.id,
+              teamIds: input.teamIds,
+              createdById: ctx.session.user.id,
+              expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+            }
+          })
+
+          return { email, status: 'INVITED', inviteId: invite.id }
+        })
+      )
+
+      return invites
+    })
 }) 

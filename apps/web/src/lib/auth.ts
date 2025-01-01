@@ -2,6 +2,8 @@ import { type NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 import { compare } from 'bcryptjs'
+import { cookies } from 'next/headers'
+import { type Session } from './trpc/context'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -121,5 +123,17 @@ declare module 'next-auth/jwt' {
       id: string
       url: string
     }
+  }
+}
+
+export async function getSession(): Promise<Session | null> {
+  const cookie = cookies().get('session')
+  if (!cookie?.value) return null
+
+  try {
+    const session = JSON.parse(cookie.value) as Session
+    return session
+  } catch {
+    return null
   }
 } 

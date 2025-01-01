@@ -3,30 +3,14 @@
 import Link from 'next/link'
 import { usePathname, useParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { trpc } from '@/lib/trpc/client'
-
-interface SettingsGroup {
-  title: string
-  items: {
-    label: string
-    href: string
-  }[]
-}
+import { Transition } from '@headlessui/react'
 
 export function SettingsSidebar() {
   const pathname = usePathname()
   const params = useParams()
   const workspaceUrl = params.workspaceUrl as string
 
-  const { data: workspace } = trpc.workspace.getByUrl.useQuery({ 
-    url: workspaceUrl 
-  }, {
-    enabled: !!workspaceUrl,
-    staleTime: 1000 * 60 * 5,
-    cacheTime: 1000 * 60 * 30,
-  })
-
-  const settingsGroups: SettingsGroup[] = [
+  const settingsGroups = [
     {
       title: 'WORKSPACE',
       items: [
@@ -38,40 +22,25 @@ export function SettingsSidebar() {
           label: 'Members', 
           href: `/${workspaceUrl}/settings/workspace/members` 
         },
-        { 
-          label: 'Billing', 
-          href: `/${workspaceUrl}/settings/workspace/billing` 
-        },
       ],
     },
     {
-      title: 'TEAMS',
+      title: 'ACCOUNT',
       items: [
         { 
-          label: 'Teams', 
-          href: `/${workspaceUrl}/settings/teams` 
-        },
-      ],
-    },
-    {
-      title: 'USER',
-      items: [
-        { 
-          label: 'My Settings', 
-          href: `/${workspaceUrl}/settings/profile` 
+          label: 'Profile', 
+          href: `/${workspaceUrl}/settings/account/profile` 
         },
         { 
-          label: 'Notifications', 
-          href: `/${workspaceUrl}/settings/notifications` 
+          label: 'Preferences', 
+          href: `/${workspaceUrl}/settings/account/preferences` 
         },
       ],
     },
   ]
 
-  if (!workspace) return null
-
   return (
-    <div className="w-60 flex-shrink-0 border-r border-gray-200 dark:border-gray-800">
+    <div className="w-64 bg-white border-r border-gray-200 dark:bg-gray-900 dark:border-gray-800">
       <div className="p-4">
         <Link
           href={`/${workspaceUrl}/my-issues`}

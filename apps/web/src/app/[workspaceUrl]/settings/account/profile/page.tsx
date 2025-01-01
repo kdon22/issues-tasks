@@ -1,125 +1,103 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { trpc } from '@/lib/trpc/client'
+import { IconPickerButton } from '@/components/ui/IconPickerButton'
 import { Input } from '@/components/ui/Input'
-import { IconPicker } from '@/components/ui/IconPicker'
-import { ICONS } from '@/constants/icons'
+import { useDebounce } from '@/hooks/useDebounce'
 
 export default function ProfilePage() {
   const utils = trpc.useContext()
-  const { data: profile, isLoading } = trpc.user.getProfile.useQuery()
-  const updateTimeoutRef = useRef<NodeJS.Timeout>()
-  
-  const updateProfile = trpc.user.updateProfile.useMutation({
-    onSuccess: () => {
-      utils.user.getProfile.invalidate()
-    },
-    onMutate: async (newData) => {
-      await utils.user.getProfile.cancel()
-      const previousData = utils.user.getProfile.getData()
-
-      utils.user.getProfile.setData(undefined, old => ({
-        ...old,
-        ...newData,
-      }))
-
-      return { previousData }
-    },
-    onError: (err, newData, context) => {
-      utils.user.getProfile.setData(undefined, context?.previousData)
+  const { data: profile } = trpc.user.getProfile.useQuery()
+  const [formData, setFormData] = useState({
+    name: '',
+    nickname: '',
+    email: '',
+    avatarData: {
+      type: 'initials' as const,
+      icon: null,
+      color: null,
+      imageUrl: null
     }
   })
 
-  const [formData, setFormData] = useState({
-    icon: profile?.icon || ICONS[0].svg,
-    iconColor: profile?.iconColor || '#25A70B',
-    name: profile?.name || '',
-    nickname: profile?.nickname || '',
+  const debouncedFormData = useDebounce(formData, 500)
+  const updateProfile = trpc.user.updateProfile.useMutation({
+    onSuccess: () => {
+      utils.user.getProfile.invalidate()
+    }
   })
 
   useEffect(() => {
     if (profile) {
       setFormData({
-        icon: profile.icon || ICONS[0].svg,
-        iconColor: profile.iconColor || '#25A70B',
         name: profile.name || '',
         nickname: profile.nickname || '',
+        email: profile.email,
+        avatarData: {
+          type: profile.avatarType as 'initials' | 'icon' | 'image',
+          icon: profile.avatarIcon,
+          color: profile.avatarColor,
+          imageUrl: profile.avatarImageUrl
+        }
       })
     }
   }, [profile])
 
-  const handleChange = (field: keyof typeof formData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+  // Auto-save when form data changes
+  useEffect(() => {
+    if (!profile) return
     
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current)
+    if (debouncedFormData.name !== profile.name || 
+        debouncedFormData.nickname !== profile.nickname ||
+        debouncedFormData.avatarData.type !== profile.avatarType ||
+        debouncedFormData.avatarData.icon !== profile.avatarIcon ||
+        debouncedFormData.avatarData.color !== profile.avatarColor) {
+      updateProfile.mutate({
+        name: debouncedFormData.name,
+        nickname: debouncedFormData.nickname,
+        avatarData: debouncedFormData.avatarData
+      })
     }
-
-    updateTimeoutRef.current = setTimeout(() => {
-      updateProfile.mutate({ ...formData, [field]: value })
-    }, 500)
-  }
-
-  const handleIconChange = (icon: string, color?: string) => {
-    const newData = {
-      ...formData,
-      icon,
-      ...(color && { iconColor: color })
-    }
-    setFormData(newData)
-    updateProfile.mutate(newData)
-  }
-
-  if (isLoading) return <div>Loading...</div>
+  }, [debouncedFormData, profile])
 
   return (
-    <div className="p-8 max-w-3xl">
-      <h1 className="text-2xl font-semibold mb-8">Profile</h1>
+    <div className="space-y-8 max-w-xl">
+      <div>
+        <h2 className="text-base font-medium text-gray-700 mb-4">Profile Picture</h2>
+        <div className="flex items-center gap-4">
+          <IconPickerButton
+            data={formData.avatarData}
+            onChange={(newData) => setFormData(prev => ({
+              ...prev,
+              avatarData: newData
+            }))}
+          />
+          <span className="text-sm text-gray-500">
+            {updateProfile.isLoading ? 'Saving...' : 'Changes saved automatically'}
+          </span>
+        </div>
+      </div>
 
-      <div className="space-y-12">
-        <section>
-          <h2 className="text-lg font-medium mb-6">Profile picture</h2>
-          <div className="flex items-start space-x-4">
-            <IconPicker
-              value={formData.icon}
-              color={formData.iconColor}
-              onChange={handleIconChange}
-            />
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-lg font-medium mb-6">Personal information</h2>
-          <div className="space-y-8">
-            <div>
-              <Input
-                label="Full name"
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-                helperText="Your full name"
-              />
-            </div>
-
-            <div>
-              <Input
-                label="Nickname"
-                value={formData.nickname}
-                onChange={(e) => handleChange('nickname', e.target.value)}
-                helperText="Nickname or first name, however you want to be called in IssuesTasks"
-              />
-            </div>
-
-            <div>
-              <Input
-                label="Email"
-                value={profile?.email}
-                disabled
-                className="bg-gray-50"
-              />
-            </div>
-          </div>
-        </section>
+      <div className="space-y-4 max-w-md">
+        <Input
+          label="Name"
+          value={formData.name}
+          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+          className="max-w-sm"
+        />
+        <Input
+          label="Nickname"
+          value={formData.nickname}
+          onChange={(e) => setFormData(prev => ({ ...prev, nickname: e.target.value }))}
+          className="max-w-sm"
+        />
+        <Input
+          label="Email"
+          value={formData.email}
+          disabled
+          className="max-w-sm"
+        />
       </div>
     </div>
   )

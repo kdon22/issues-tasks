@@ -17,4 +17,30 @@ export function slugify(text: string): string {
 
 export function getSettingsUrl(workspaceUrl: string, path: string) {
   return `/${workspaceUrl}/settings${path}`
+}
+
+export function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
+
+export function stringToColor(str: string): string {
+  if (!str) return 'gray'
+  
+  const colors = [
+    'red', 'orange', 'amber', 'yellow', 'lime', 'green', 
+    'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 
+    'violet', 'purple', 'fuchsia', 'pink', 'rose'
+  ]
+  
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  
+  return colors[Math.abs(hash) % colors.length]
 } 
