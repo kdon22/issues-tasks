@@ -1,40 +1,19 @@
-const nx = require('@nx/eslint-plugin');
+const js = require('@eslint/js');
+const { FlatCompat } = require('@eslint/eslintrc');
+const compat = new FlatCompat();
 
 module.exports = [
-  ...nx.configs['flat/base'],
-  ...nx.configs['flat/typescript'],
-  ...nx.configs['flat/javascript'],
-  {
-    ignores: ['**/dist'],
-  },
+  js.configs.recommended,
+  ...compat.config({
+    extends: ['next', 'next/core-web-vitals'],
+  }),
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
     rules: {
-      '@nx/enforce-module-boundaries': [
-        'error',
-        {
-          enforceBuildableLibDependency: true,
-          allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?js$'],
-          depConstraints: [
-            {
-              sourceTag: '*',
-              onlyDependOnLibsWithTags: ['*'],
-            },
-          ],
-        },
-      ],
+      '@next/next/no-html-link-for-pages': ['error', 'apps/web/pages'],
     },
   },
   {
-    files: [
-      '**/*.ts',
-      '**/*.tsx',
-      '**/*.js',
-      '**/*.jsx',
-      '**/*.cjs',
-      '**/*.mjs',
-    ],
-    // Override or add rules here
-    rules: {},
+    ignores: ['**/dist/**', '**/node_modules/**', '.next/**'],
   },
 ];

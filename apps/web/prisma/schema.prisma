@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String
+  nickname      String?
+  icon          String?
+  iconColor     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  preferences   UserPreferences[]
+  workspaces    WorkspaceMember[]
+  teams         TeamMember[]
+}
+
+model Workspace {
+  id              String    @id @default(cuid())
+  name            String
+  url             String    @unique
+  icon            String?
+  fiscalYearStart String    @default("January")
+  region          String    @default("United States")
+  members         WorkspaceMember[]
+  preferences     UserPreferences[]
+  teams           Team[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  role        String    @default("MEMBER")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, workspaceId])
+}
+
+model UserPreferences {
+  id              String    @id @default(cuid())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId     String
+  defaultHomeView String    @default("my-issues")
+  fontSize        String    @default("default")
+  usePointerCursor Boolean  @default(false)
+  displayFullNames Boolean  @default(false)
+  interfaceTheme  String    @default("system")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, workspaceId])
+}
+
+model Team {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  iconColor   String?
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  members     TeamMember[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model TeamMember {
+  id        String    @id @default(cuid())
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      TeamRole  @default(MEMBER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, teamId])
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+} 
