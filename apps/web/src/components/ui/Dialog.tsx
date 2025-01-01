@@ -2,15 +2,17 @@
 
 import { Fragment } from 'react'
 import { Dialog as HeadlessDialog, Transition } from '@headlessui/react'
+import { cn } from '@/lib/utils'
 
 interface DialogProps {
   isOpen: boolean
   onClose: () => void
   title: string
   children: React.ReactNode
+  className?: string
 }
 
-export function Dialog({ isOpen, onClose, title, children }: DialogProps) {
+export function Dialog({ isOpen, onClose, title, children, className }: DialogProps) {
   return (
     <Transition show={isOpen} as={Fragment}>
       <HeadlessDialog onClose={onClose} className="relative z-50">
@@ -37,7 +39,12 @@ export function Dialog({ isOpen, onClose, title, children }: DialogProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <HeadlessDialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <HeadlessDialog.Panel 
+                className={cn(
+                  "w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all",
+                  className
+                )}
+              >
                 <HeadlessDialog.Title className="text-lg font-medium leading-6 text-gray-900">
                   {title}
                 </HeadlessDialog.Title>

@@ -439,5 +439,17 @@ export const workspaceRouter = router({
       )
 
       return invites
+    }),
+
+  updateMemberStatus: protectedProcedure
+    .input(z.object({
+      userId: z.string(),
+      status: z.enum(['ACTIVE', 'PENDING', 'DISABLED'])
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.user.update({
+        where: { id: input.userId },
+        data: { status: input.status }
+      })
     })
 }) 
