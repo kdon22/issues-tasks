@@ -4,41 +4,69 @@ import { cn } from '@/lib/utils'
 import { getInitials } from '@/lib/utils'
 
 interface AvatarProps {
-  type: 'initials' | 'icon' | 'image'
-  name: string | null | undefined
+  name: string
+  src?: string | null
   icon?: string | null
   color?: string | null
-  imageUrl?: string | null
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
 }
 
-export function Avatar({ type, name, icon, color, imageUrl, className }: AvatarProps) {
-  const baseClasses = 'w-12 h-12 flex items-center justify-center rounded-md'
-  const colorClasses = color 
-    ? `border border-${color}-200 bg-${color}-50 text-${color}-700`
-    : 'border border-blue-200 bg-blue-50 text-blue-700'
+const sizeClasses = {
+  xs: 'h-6 w-6 text-xs',
+  sm: 'h-8 w-8 text-sm',
+  md: 'h-10 w-10 text-base',
+  lg: 'h-12 w-12 text-lg'
+}
 
-  const initials = name ? getInitials(name) : '??'
+export function Avatar({ name, src, icon, color = 'gray', size = 'md', className }: AvatarProps) {
+  // Get initials from name
+  const initials = getInitials(name)
+  
+  // Use color if provided, otherwise use gray
+  const bgColor = color ? `bg-${color}-100` : 'bg-gray-100'
+  const textColor = color ? `text-${color}-700` : 'text-gray-700'
 
+  // If we have a src (image URL), show the image
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={cn(
+          'rounded-full object-cover',
+          sizeClasses[size],
+          className
+        )}
+      />
+    )
+  }
+
+  // If we have an icon, show the icon
+  if (icon) {
+    return (
+      <div className={cn(
+        'flex items-center justify-center rounded-full',
+        bgColor,
+        textColor,
+        sizeClasses[size],
+        className
+      )}>
+        <span className="material-icons-outlined">{icon}</span>
+      </div>
+    )
+  }
+
+  // Otherwise show initials
   return (
-    <div className={cn(baseClasses, colorClasses, className)}>
-      {type === 'initials' && (
-        <span className="text-lg font-semibold select-none">
-          {initials}
-        </span>
-      )}
-      {type === 'icon' && icon && (
-        <span className="text-lg">
-          {icon}
-        </span>
-      )}
-      {type === 'image' && imageUrl && (
-        <img 
-          src={imageUrl} 
-          alt={name || 'User avatar'}
-          className="w-full h-full object-cover rounded-md"
-        />
-      )}
+    <div className={cn(
+      'flex items-center justify-center rounded-full font-medium',
+      bgColor,
+      textColor,
+      sizeClasses[size],
+      className
+    )}>
+      {initials}
     </div>
   )
 } 

@@ -2,54 +2,78 @@ import { router, protectedProcedure } from '../trpc'
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 
+// Define a schema for avatar data
 const avatarDataSchema = z.object({
-  type: z.enum(['initials', 'icon', 'image']),
-  icon: z.string().nullable(),
-  color: z.string().nullable(),
-  imageUrl: z.string().nullable(),
+  type: z.enum(['initials', 'icon', 'image']).optional(),
+  icon: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
 })
 
 export const userRouter = router({
   getProfile: protectedProcedure
     .query(async ({ ctx }) => {
-      return ctx.prisma.user.findUnique({
+      const user = await ctx.prisma.user.findUnique({
         where: { id: ctx.session.user.id },
         select: {
           id: true,
           name: true,
           email: true,
-          nickname: true,
           avatarType: true,
           avatarIcon: true,
           avatarColor: true,
           avatarImageUrl: true,
         },
       })
+
+      if (!user) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'User not found',
+        })
+      }
+
+      return user
     }),
 
   updateProfile: protectedProcedure
     .input(z.object({
-      name: z.string().min(1),
-      nickname: z.string().optional(),
-      avatarData: z.object({
-        type: z.enum(['initials', 'icon', 'image']),
-        icon: z.string().nullable(),
-        color: z.string().nullable(),
-        imageUrl: z.string().nullable(),
-      }),
+      name: z.string().min(1).optional(),
+      email: z.string().email().optional(),
+      avatar: avatarDataSchema.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.user.update({
+      // Verify email uniqueness if changing email
+      if (input.email) {
+        const existingUser = await ctx.prisma.user.findUnique({
+          where: { 
+            email: input.email,
+            NOT: { id: ctx.session.user.id }
+          },
+        })
+
+        if (existingUser) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'Email already in use',
+          })
+        }
+      }
+
+      // Update user profile
+      const updatedUser = await ctx.prisma.user.update({
         where: { id: ctx.session.user.id },
         data: {
           name: input.name,
-          nickname: input.nickname,
-          avatarType: input.avatarData.type,
-          avatarIcon: input.avatarData.icon,
-          avatarColor: input.avatarData.color,
-          avatarImageUrl: input.avatarData.imageUrl,
+          email: input.email,
+          avatarType: input.avatar?.type,
+          avatarIcon: input.avatar?.icon,
+          avatarColor: input.avatar?.color,
+          avatarImageUrl: input.avatar?.imageUrl,
         },
       })
+
+      return updatedUser
     }),
 
   getPreferences: protectedProcedure

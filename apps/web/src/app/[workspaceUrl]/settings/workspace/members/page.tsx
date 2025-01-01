@@ -3,12 +3,12 @@
 import { useState, useMemo } from 'react'
 import { trpc } from '@/lib/trpc/client'
 import { useWorkspace } from '@/hooks/useWorkspace'
-import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 import { EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
 import { formatDistanceToNow } from 'date-fns'
+import { SearchFilter } from '@/components/ui/SearchFilter'
 import { InviteMembersDialog } from '@/components/workspace/InviteMembersDialog'
 
 type SortField = 'name' | 'email' | 'role' | 'joined' | 'lastSeen'
@@ -98,7 +98,7 @@ export default function MembersPage() {
   }
 
   const renderSortIcon = (field: SortField) => {
-    if (sortField !== field) return '↕'
+    if (sortField !== field) return null
     return sortDirection === 'asc' ? '↑' : '↓'
   }
 
@@ -187,12 +187,9 @@ export default function MembersPage() {
       </div>
 
       <div className="flex gap-4">
-        <Input
-          type="search"
-          placeholder="Search by name or email"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-md"
+        <SearchFilter
+          onSearch={setSearch}
+          className="w-[400px]"
         />
       </div>
 

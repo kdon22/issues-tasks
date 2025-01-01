@@ -1,7 +1,7 @@
 import { router, protectedProcedure, workspaceProcedure } from '../trpc'
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
-import { slugify } from '@/lib/utils'
+import { slugify, stringToColor } from '@/lib/utils'
 import { cookies } from 'next/headers'
 import { type Workspace, type WorkspaceMember } from '@/types/workspace'
 
@@ -96,31 +96,32 @@ export const workspaceRouter = router({
 
   updateWorkspace: workspaceProcedure
     .input(z.object({
-      workspaceId: z.string(),
-      name: z.string(),
-      url: z.string(),
-      fiscalYearStart: z.string(),
-      region: z.string(),
-      // Avatar fields
-      avatarType: z.enum(['initials', 'icon', 'image']).optional(),
-      avatarIcon: z.string().nullable(),
-      avatarColor: z.string().nullable(),
-      avatarImageUrl: z.string().nullable(),
+      name: z.string().min(1).optional(),
+      url: z.string().min(1).optional(),
+      avatar: z.object({
+        type: z.enum(['initials', 'icon', 'image']),
+        icon: z.string().nullable().optional(),
+        color: z.string().nullable().optional(),
+        imageUrl: z.string().nullable().optional(),
+      }).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      return await ctx.prisma.workspace.update({
-        where: { id: input.workspaceId },
+      // Generate a consistent color based on workspace name if not provided
+      const color = input.avatar?.color || stringToColor(input.name || ctx.workspace.name)
+
+      const workspace = await ctx.prisma.workspace.update({
+        where: { id: ctx.workspace.id },
         data: {
           name: input.name,
           url: input.url,
-          fiscalYearStart: input.fiscalYearStart,
-          region: input.region,
-          avatarType: input.avatarType,
-          avatarIcon: input.avatarIcon,
-          avatarColor: input.avatarColor,
-          avatarImageUrl: input.avatarImageUrl,
-        },
+          avatarType: input.avatar?.type || 'initials',
+          avatarIcon: input.avatar?.icon,
+          avatarColor: color,
+          avatarImageUrl: input.avatar?.imageUrl,
+        }
       })
+
+      return workspace
     }),
 
   // Generate invite link
