@@ -6,14 +6,23 @@ export const teamMemberRouter = router({
   list: protectedProcedure
     .input(z.object({ teamId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const members = await ctx.prisma.teamMember.findMany({
+      return ctx.prisma.teamMember.findMany({
         where: {
-          teamId: input.teamId,
+          teamId: input.teamId
         },
         include: {
-          user: true,
-        },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarType: true,
+              avatarIcon: true,
+              avatarColor: true,
+              avatarImageUrl: true
+            }
+          }
+        }
       })
-      return members
     }),
 }) 

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { UserIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { UserAvatar } from '@/components/ui/UserAvatar'
 
 export default function TeamMembersPage({ params }: { params: { teamId: string } }) {
   const [showInviteForm, setShowInviteForm] = useState(false)
@@ -66,27 +67,10 @@ export default function TeamMembersPage({ params }: { params: { teamId: string }
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-10 w-10">
-                      {member.user.icon ? (
-                        <div
-                          className="h-10 w-10 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: member.user.iconColor || '#000000' }}
-                        >
-                          <svg
-                            className="w-6 h-6 text-white"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            dangerouslySetInnerHTML={{ __html: member.user.icon }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                          <UserIcon className="h-6 w-6 text-gray-400" />
-                        </div>
-                      )}
+                      <UserAvatar 
+                        user={member.user}
+                        size="md"
+                      />
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">

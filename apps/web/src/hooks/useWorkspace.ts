@@ -7,13 +7,17 @@ export function useWorkspace() {
   const params = useParams()
   const workspaceUrl = params.workspaceUrl as string
 
-  const { data: workspace } = trpc.workspace.getByUrl.useQuery(
+  const { data: workspace, isLoading } = trpc.workspace.getByUrl.useQuery(
     { url: workspaceUrl },
-    { enabled: !!workspaceUrl }
+    { 
+      enabled: !!workspaceUrl,
+      staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    }
   )
 
   return {
     workspace,
-    workspaceUrl
+    workspaceUrl,
+    isLoading
   }
 } 

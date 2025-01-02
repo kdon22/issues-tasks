@@ -1,9 +1,7 @@
 import '@/styles/globals.css'
 import { Inter } from 'next/font/google'
 import { TrpcProvider } from '@/providers/TrpcProvider'
-import { headers } from 'next/headers'
 
-// Configure Inter font
 const inter = Inter({
   subsets: ['latin'],
   display: 'swap',

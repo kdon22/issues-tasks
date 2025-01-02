@@ -1,57 +1,79 @@
-import { PrismaClient } from '@prisma/client'
-import { hash } from 'bcryptjs'
+// import { PrismaClient } from '@prisma/client'
+// import { hash } from 'bcryptjs'
 
-const prisma = new PrismaClient()
+// const prisma = new PrismaClient()
 
-async function main() {
-  try {
-    // Create user first
-    const hashedPassword = await hash('00000', 12)
-    const user = await prisma.user.create({
-      data: {
-        email: 'test@example.com',
-        name: 'Test User',
-        password: hashedPassword,
-      },
-    })
+// async function main() {
+//   try {
+//     // Create user first
+//     const hashedPassword = await hash('00000', 12)
+//     const user = await prisma.user.create({
+//       data: {
+//         email: "kdon22@me.com",
+//         name: "Test User",
+//         password: hashedPassword,
+//         workspaces: {
+//           create: {
+//             workspace: {
+//               create: {
+//                 name: "Test Workspace",
+//                 url: "test1",
+//                 fiscalYearStart: "January",
+//                 region: "United States"
+//               }
+//             },
+//             role: "OWNER"
+//           }
+//         },
+//         preferences: {
+//           create: {
+//             workspaceId: "",
+//             defaultHomeView: "active-issues",
+//             fontSize: "default",
+//             usePointerCursor: false,
+//             displayFullNames: false,
+//             interfaceTheme: "system",
+//             firstDayOfWeek: "Monday",
+//             useEmoticons: true
+//           }
+//         }
+//       },
+//       include: {
+//         workspaces: {
+//           include: {
+//             workspace: true
+//           }
+//         }
+//       }
+//     })
 
-    // Create workspace
-    const workspace = await prisma.workspace.create({
-      data: {
-        name: 'Test Workspace',
-        url: 'test-workspace',
-        members: {
-          create: {
-            userId: user.id,
-            role: 'OWNER',
-          },
-        },
-      },
-    })
+//     // Update preferences with workspace ID
+//     if (user.workspaces[0]) {
+//       await prisma.userPreferences.update({
+//         where: {
+//           userId_workspaceId: {
+//             userId: user.id,
+//             workspaceId: user.workspaces[0].workspaceId
+//           }
+//         },
+//         data: {
+//           workspaceId: user.workspaces[0].workspaceId
+//         }
+//       })
+//     }
 
-    // Create user preferences
-    await prisma.userPreferences.create({
-      data: {
-        userId: user.id,
-        workspaceId: workspace.id,
-        defaultHomeView: 'my-issues',
-      },
-    })
+//     console.log('Seeding completed successfully')
+//   } catch (error) {
+//     console.error('Error seeding data:', error)
+//     throw error
+//   }
+// }
 
-    console.log('Seed data created successfully')
-  } catch (error) {
-    console.error('Error seeding data:', error)
-    throw error
-  } finally {
-    await prisma.$disconnect()
-  }
-}
-
-main()
-  .catch((e) => {
-    console.error(e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+// main()
+//   .catch((e) => {
+//     console.error(e)
+//     process.exit(1)
+//   })
+//   .finally(async () => {
+//     await prisma.$disconnect()
+//   })

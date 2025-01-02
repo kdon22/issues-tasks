@@ -1,84 +1,108 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { trpc } from '@/lib/trpc/client'
 import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
-import { Avatar } from '@/components/ui/Avatar'
+import { UserAvatar } from '@/components/ui/UserAvatar'
+import { IconPicker } from '@/components/ui/IconPicker'
+import { useDebounce } from '@/hooks/useDebounce'
 
 export default function ProfilePage() {
-  const { data: profile } = trpc.user.getProfile.useQuery()
   const utils = trpc.useContext()
+  const { data: user } = trpc.user.getCurrent.useQuery()
+  
+  const [name, setName] = useState(user?.name || '')
+  const [nickname, setNickname] = useState(user?.nickname || '')
+  
+  const debouncedName = useDebounce(name, 500)
+  const debouncedNickname = useDebounce(nickname, 500)
 
   const updateProfile = trpc.user.updateProfile.useMutation({
     onSuccess: () => {
-      utils.user.getProfile.invalidate()
+      utils.user.getCurrent.invalidate()
     }
   })
 
-  const [name, setName] = useState(profile?.name || '')
-  const [email, setEmail] = useState(profile?.email || '')
+  const updateAvatar = trpc.user.updateAvatar.useMutation({
+    onSuccess: () => {
+      utils.user.getCurrent.invalidate()
+    }
+  })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    updateProfile.mutate({
-      name,
-      email,
-      avatar: {
-        type: 'initials',  // Default to initials if no other type selected
-        color: profile?.avatarColor || undefined,
-        icon: profile?.avatarIcon || undefined,
-        imageUrl: profile?.avatarImageUrl || undefined
-      }
-    })
-  }
+  // Update when initial data loads
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '')
+      setNickname(user.nickname || '')
+    }
+  }, [user])
+
+  // Auto-save on debounced changes
+  useEffect(() => {
+    if (user && (debouncedName !== user.name || debouncedNickname !== user.nickname)) {
+      updateProfile.mutate({
+        name: debouncedName,
+        nickname: debouncedNickname,
+      })
+    }
+  }, [debouncedName, debouncedNickname, user])
+
+  if (!user) return null
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="max-w-2xl space-y-8">
       <div>
-        <h2 className="text-lg font-medium text-gray-900">Profile Picture</h2>
-        <div className="mt-2">
-          <Avatar
-            name={profile?.name || ''}
-            src={profile?.avatarImageUrl}
-            icon={profile?.avatarIcon}
-            color={profile?.avatarColor}
-            size="lg"
+        <h2 className="text-2xl font-bold leading-7 text-gray-900">Profile Settings</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Manage your personal information
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        {/* Icon & Name Section */}
+        <div className="space-y-4">
+          <div className="text-sm font-medium text-gray-700">Icon & Name</div>
+          <div className="flex items-center gap-6">
+            <IconPicker
+              type={user.avatarType}
+              icon={user.avatarIcon}
+              color={user.avatarColor}
+              imageUrl={user.avatarImageUrl}
+              onChange={(avatar) => updateAvatar.mutate(avatar)}
+            >
+              <UserAvatar user={user} size="lg" />
+            </IconPicker>
+            <div className="w-1/2">
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Nickname */}
+        <div className="w-1/2 space-y-1.5">
+          <div className="text-sm font-medium text-gray-700">Nickname (Optional)</div>
+          <Input
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder="Will be used in mentions and comments"
+          />
+        </div>
+
+        {/* Email - Read Only */}
+        <div className="w-1/2 space-y-1.5">
+          <div className="text-sm font-medium text-gray-700">Email</div>
+          <Input
+            value={user.email}
+            readOnly
+            disabled
+            className="bg-gray-50"
           />
         </div>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Name
-          </label>
-          <Input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Email
-          </label>
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1"
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <Button type="submit" disabled={updateProfile.isLoading}>
-            {updateProfile.isLoading ? 'Saving...' : 'Save'}
-          </Button>
-        </div>
-      </form>
     </div>
   )
 } 

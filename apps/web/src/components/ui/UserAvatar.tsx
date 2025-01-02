@@ -7,9 +7,10 @@ interface UserAvatarProps {
   user: {
     id: string
     name: string
-    avatarUrl?: string | null
-    icon?: string | null
-    iconColor?: string | null
+    avatarType?: string
+    avatarIcon?: string | null
+    avatarColor?: string | null
+    avatarImageUrl?: string | null
   }
   size?: AvatarSize
   showTooltip?: boolean
@@ -21,11 +22,11 @@ export function UserAvatar({ user, size, showTooltip }: UserAvatarProps) {
       data={{
         id: user.id,
         name: user.name,
-        avatarUrl: user.avatarUrl,
-        icon: user.icon,
-        color: user.iconColor
+        type: user.avatarType || 'initials',
+        icon: user.avatarIcon,
+        color: user.avatarColor,
+        imageUrl: user.avatarImageUrl
       }}
-      type="user"
       size={size}
       showTooltip={showTooltip}
     />

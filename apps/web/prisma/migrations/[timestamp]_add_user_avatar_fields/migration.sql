@@ -1,0 +1,5 @@
+-- Add avatar fields to User table
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "avatarType" TEXT NOT NULL DEFAULT 'initials';
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "avatarIcon" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "avatarColor" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "avatarImageUrl" TEXT; 
