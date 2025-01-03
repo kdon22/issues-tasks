@@ -7,28 +7,26 @@ import { cn } from '@/lib/utils'
 import { settingsNavigation } from '@/config/settings-nav'
 
 export function SettingsNav() {
-  const pathname = usePathname()
-  const workspaceUrl = pathname.split('/')[1]
+  const pathname = usePathname() || ''
+  const workspaceUrl = pathname.split('/')[1] || ''
   const { workspace } = useWorkspace(workspaceUrl)
 
   if (!workspace) return null
 
   return (
     <nav className="space-y-8">
-      {settingsNavigation.sections.map((section) => (
-        <div key={section.label}>
-          <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            {section.label}
+      {settingsNavigation.map((section) => (
+        <div key={section.title}>
+          <h3 className="px-3 text-sm font-medium text-gray-500 uppercase">
+            {section.title}
           </h3>
           <div className="mt-3 space-y-1">
             {section.items.map((item) => {
-              const href = `/${workspace.url}${item.href}`
-              const isActive = pathname === href
-              
+              const isActive = pathname.startsWith(`/${workspaceUrl}/settings/${item.href}`)
               return (
                 <Link
                   key={item.href}
-                  href={href}
+                  href={`/${workspaceUrl}/settings/${item.href}`}
                   className={cn(
                     'block px-3 py-1 text-sm rounded-md',
                     isActive
