@@ -8,7 +8,8 @@ export const authConfig: AuthOptions = {
     signIn: '/auth/login',
   },
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   providers: [
     CredentialsProvider({
@@ -46,7 +47,11 @@ export const authConfig: AuthOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      if (trigger === 'signIn' && session?.remember === false) {
+        // Set session to expire in 1 day if "remember me" is false
+        token.exp = Math.floor(Date.now() / 1000) + 24 * 60 * 60
+      }
       if (user) {
         token.id = user.id
         token.email = user.email

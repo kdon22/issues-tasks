@@ -1,31 +1,39 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { getServerSession } from 'next-auth'
+import { authConfig } from '@/lib/auth.config'
 
 export async function GET(request: Request) {
   try {
-    const sessionCookie = cookies().get('session')
-    if (!sessionCookie?.value) {
+    const session = await getServerSession(authConfig)
+    
+    if (!session?.user?.id) {
       return NextResponse.redirect(new URL('/auth/login', request.url))
     }
 
-    const user = JSON.parse(sessionCookie.value)
-    const workspace = await prisma.workspaceMember.findFirst({
+    // Get all workspaces for the user, ordered by last accessed
+    const workspaceMemberships = await prisma.workspaceMember.findMany({
       where: {
-        userId: user.id,
+        userId: session.user.id,
       },
       include: {
         workspace: true,
       },
+      orderBy: {
+        updatedAt: 'desc' // This assumes you track when the workspace was last accessed
+      }
     })
 
-    if (!workspace) {
-      return NextResponse.redirect(new URL('/workspace', request.url))
+    if (!workspaceMemberships.length) {
+      return NextResponse.redirect(new URL('/workspace/new', request.url))
     }
 
-    return NextResponse.redirect(new URL(`/${workspace.workspace.url}`, request.url))
+    // Get last accessed workspace from localStorage or use the most recently accessed one
+    const lastWorkspaceUrl = workspaceMemberships[0].workspace.url
+    
+    return NextResponse.redirect(new URL(`/${lastWorkspaceUrl}/my-issues`, request.url))
   } catch (error) {
-    console.error('Error:', error)
-    return NextResponse.redirect(new URL('/workspace', request.url))
+    console.error('Workspace redirect error:', error)
+    return NextResponse.redirect(new URL('/workspace/new', request.url))
   }
 } 

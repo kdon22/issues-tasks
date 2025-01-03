@@ -4,6 +4,7 @@ import { signIn } from 'next-auth/react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Logo } from '@/components/ui/Logo'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 
@@ -11,29 +12,36 @@ export function LoginForm() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
+    setIsRedirecting(true)
 
     try {
       const result = await signIn('credentials', {
         email,
         password,
+        remember: rememberMe,
         redirect: false,
       })
 
       if (result?.error) {
         setError('Invalid email or password')
+        setIsRedirecting(false)
         return
       }
 
-      // Redirect to the last workspace or default route
+      // After successful login, redirect to /api/workspace
+      // This endpoint will handle finding the correct workspace and redirecting
       router.push('/api/workspace')
     } catch (err) {
+      console.error('Login error:', err)
       setError('An error occurred. Please try again.')
     } finally {
       setLoading(false)
@@ -43,7 +51,7 @@ export function LoginForm() {
   return (
     <div className="w-full max-w-md">
       <div className="flex justify-center mb-8">
-        <h1 className="text-2xl font-semibold">IssuesTasks</h1>
+        <Logo />
       </div>
 
       <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
@@ -84,13 +92,26 @@ export function LoginForm() {
             />
           </div>
 
+          <div className="flex items-center">
+            <input
+              id="remember-me"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 text-[#FF5533] focus:ring-[#FF5533] border-gray-300 rounded"
+            />
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+              Remember me
+            </label>
+          </div>
+
           <Button
             type="submit"
             className="w-full"
-            loading={loading}
-            disabled={loading}
+            loading={loading || isRedirecting}
+            disabled={loading || isRedirecting}
           >
-            Sign in
+            {isRedirecting ? 'Redirecting...' : 'Sign in'}
           </Button>
         </form>
 
@@ -98,7 +119,7 @@ export function LoginForm() {
           <span className="text-gray-600">Don't have an account?</span>{' '}
           <Link 
             href="/auth/signup" 
-            className="text-blue-600 hover:text-blue-500 font-medium"
+            className="text-[#FF5533] hover:text-[#FF5533]/90 font-medium"
           >
             Sign up
           </Link>

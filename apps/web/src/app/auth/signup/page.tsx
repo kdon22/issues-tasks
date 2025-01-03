@@ -7,6 +7,7 @@ import { api } from '@/lib/trpc/client'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { stringToColor, slugify } from '@/lib/utils'
+import { Logo } from '@/components/ui/Logo'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -51,7 +52,7 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <h1 className="text-2xl font-semibold">IssuesTasks</h1>
+          <Logo />
         </div>
 
         <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">

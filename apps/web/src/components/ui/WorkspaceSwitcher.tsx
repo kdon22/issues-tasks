@@ -1,111 +1,179 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Fragment } from 'react'
+import { Menu, Transition } from '@headlessui/react'
+import { 
+  ChevronDown, 
+  Settings, 
+  Users, 
+  LogOut,
+  UserCircle,
+  Sliders,
+  Building,
+  UserPlus
+} from 'lucide-react'
+import { useWorkspace } from '@/lib/hooks/useWorkspace'
 import { api } from '@/lib/trpc/client'
-import { ChevronDown, Settings, Users, LogOut, Plus } from 'lucide-react'
-
-interface Workspace {
-  id: string
-  name: string
-  url: string
-}
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { signOut } from 'next-auth/react'
 
 export function WorkspaceSwitcher() {
   const router = useRouter()
-  const [isOpen, setIsOpen] = useState(false)
+  const { workspace } = useWorkspace(window.location.pathname.split('/')[1])
   const { data: workspaces } = api.workspace.list.useQuery()
-  const currentWorkspace = workspaces?.[0]
 
-  if (!currentWorkspace) return null
+  if (!workspace) return null
+
+  const menuItemClasses = 
+    'flex items-center gap-2 px-2 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md w-full text-left'
+
+  const sectionHeaderClasses =
+    'px-2 py-1.5 text-xs font-medium text-gray-500 uppercase'
 
   return (
-    <div className="relative flex items-center">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 text-lg font-semibold hover:bg-gray-100 rounded-md"
-      >
-        <div className="flex items-center gap-2">
-          <span className="bg-yellow-100 text-yellow-800 w-8 h-8 rounded-full flex items-center justify-center">
-            {currentWorkspace.name.charAt(0)}
-          </span>
-          <span>{currentWorkspace.name}</span>
-          <ChevronDown className="w-4 h-4" />
+    <Menu as="div" className="relative inline-block text-left">
+      <Menu.Button className="flex items-center gap-2 px-2 py-1.5 text-sm text-gray-900 hover:bg-gray-100 rounded-md">
+        <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+          <span className="text-yellow-700 font-medium">98</span>
         </div>
-      </button>
+        <span className="font-medium">9876</span>
+        <ChevronDown size={16} className="text-gray-500" />
+      </Menu.Button>
 
-      {isOpen && (
-        <div className="absolute left-0 top-full z-10 mt-1 w-64 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+      <Transition
+        as={Fragment}
+        enter="transition ease-out duration-100"
+        enterFrom="transform opacity-0 scale-95"
+        enterTo="transform opacity-100 scale-100"
+        leave="transition ease-in duration-75"
+        leaveFrom="transform opacity-100 scale-100"
+        leaveTo="transform opacity-0 scale-95"
+      >
+        <Menu.Items className="absolute left-0 z-10 mt-1 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
           <div className="py-1">
-            <div className="px-4 py-2 text-sm font-medium text-gray-900">Workspaces</div>
-            {workspaces?.map((workspace) => (
-              <button
-                key={workspace.id}
-                onClick={() => {
-                  router.push(`/${workspace.url}/my-issues`)
-                  setIsOpen(false)
-                }}
-                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-left hover:bg-gray-100"
-              >
-                <span className="bg-yellow-100 text-yellow-800 w-6 h-6 rounded-full flex items-center justify-center text-sm">
-                  {workspace.name.charAt(0)}
-                </span>
-                {workspace.name}
-              </button>
-            ))}
-            
-            <div className="border-t mt-2">
-              <button
-                onClick={() => {
-                  router.push(`/${currentWorkspace.url}/settings`)
-                  setIsOpen(false)
-                }}
-                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-left hover:bg-gray-100"
-              >
-                <Settings className="w-4 h-4" />
-                Settings
-              </button>
-              
-              <button
-                onClick={() => {
-                  router.push(`/${currentWorkspace.url}/settings/members`)
-                  setIsOpen(false)
-                }}
-                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-left hover:bg-gray-100"
-              >
-                <Users className="w-4 h-4" />
-                Invite and manage members
-              </button>
+            {/* Workspace Settings */}
+            <div className={sectionHeaderClasses}>
+              Workspace Settings
+            </div>
+            <div className="px-2 py-1 space-y-1">
+              <Menu.Item>
+                {({ active }) => (
+                  <Link
+                    href={`/${workspace.url}/settings/workspace/general`}
+                    className={cn(menuItemClasses, active && 'bg-gray-100')}
+                  >
+                    <Building size={16} />
+                    <span>General</span>
+                  </Link>
+                )}
+              </Menu.Item>
+              <Menu.Item>
+                {({ active }) => (
+                  <Link
+                    href={`/${workspace.url}/settings/workspace/members`}
+                    className={cn(menuItemClasses, active && 'bg-gray-100')}
+                  >
+                    <Users size={16} />
+                    <span>Members</span>
+                  </Link>
+                )}
+              </Menu.Item>
+              <Menu.Item>
+                {({ active }) => (
+                  <Link
+                    href={`/${workspace.url}/settings/workspace/members/invite`}
+                    className={cn(menuItemClasses, active && 'bg-gray-100')}
+                  >
+                    <UserPlus size={16} />
+                    <span>Invite members</span>
+                  </Link>
+                )}
+              </Menu.Item>
             </div>
 
-            <div className="border-t">
-              <button
-                onClick={() => {
-                  router.push('/workspace/new')
-                  setIsOpen(false)
-                }}
-                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-left hover:bg-gray-100"
-              >
-                <Plus className="w-4 h-4" />
-                Create or join a workspace
-              </button>
+            {/* Personal Settings */}
+            <div className="mt-4">
+              <div className={sectionHeaderClasses}>
+                Personal Settings
+              </div>
+              <div className="px-2 py-1 space-y-1">
+                <Menu.Item>
+                  {({ active }) => (
+                    <Link
+                      href={`/${workspace.url}/settings/account/profile`}
+                      className={cn(menuItemClasses, active && 'bg-gray-100')}
+                    >
+                      <UserCircle size={16} />
+                      <span>Profile</span>
+                    </Link>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <Link
+                      href={`/${workspace.url}/settings/account/preferences`}
+                      className={cn(menuItemClasses, active && 'bg-gray-100')}
+                    >
+                      <Sliders size={16} />
+                      <span>Preferences</span>
+                    </Link>
+                  )}
+                </Menu.Item>
+              </div>
             </div>
 
-            <div className="border-t">
-              <button
-                onClick={() => {
-                  // TODO: Add logout functionality
-                  setIsOpen(false)
-                }}
-                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-gray-100"
-              >
-                <LogOut className="w-4 h-4" />
-                Log out
-              </button>
+            {/* Workspace Switcher */}
+            {workspaces && workspaces.length > 1 && (
+              <>
+                <div className="border-t border-gray-200 my-2" />
+                <div className={sectionHeaderClasses}>
+                  Switch Workspace
+                </div>
+                <div className="px-2 py-1 space-y-1">
+                  {workspaces.map((ws) => (
+                    <Menu.Item key={ws.id}>
+                      {({ active }) => (
+                        <Link
+                          href={`/${ws.url}/my-issues`}
+                          className={cn(
+                            menuItemClasses,
+                            active && 'bg-gray-100',
+                            workspace.id === ws.id && 'bg-gray-50'
+                          )}
+                        >
+                          <div className="w-4 h-4 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <span className="text-yellow-700 text-xs">{ws.name[0]}</span>
+                          </div>
+                          {ws.name}
+                        </Link>
+                      )}
+                    </Menu.Item>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Logout */}
+            <div className="border-t border-gray-200 my-2">
+              <div className="px-2 py-1">
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => signOut({ callbackUrl: '/auth/login' })}
+                      className={cn(menuItemClasses, active && 'bg-gray-100')}
+                    >
+                      <LogOut size={16} />
+                      <span>Log out</span>
+                    </button>
+                  )}
+                </Menu.Item>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        </Menu.Items>
+      </Transition>
+    </Menu>
   )
 } 
