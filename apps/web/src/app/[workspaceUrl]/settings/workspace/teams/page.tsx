@@ -1,28 +1,40 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { trpc } from '@/lib/trpc/client'
+import { useRouter, usePathname } from 'next/navigation'
+import { api } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/Button'
-import { TeamAvatar } from '@/components/ui/TeamAvatar'
-import { useWorkspace } from '@/hooks/useWorkspace'
+import { EntityAvatar } from '@/components/ui/EntityAvatar'
+import { useWorkspace } from '@/lib/hooks/useWorkspace'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { formatDate } from '@/lib/utils'
 import { EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
 
+interface Team {
+  id: string
+  name: string
+  identifier: string
+  createdAt: Date
+  _count?: {
+    members: number
+  }
+}
+
 export default function TeamsPage() {
   const router = useRouter()
-  const { workspace } = useWorkspace()
+  const pathname = usePathname()
+  const workspaceUrl = pathname.split('/')[1]
+  const { workspace } = useWorkspace(workspaceUrl)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState('name')
   
-  const { data: teams, isLoading } = trpc.workspace.getTeams.useQuery(
-    { workspaceId: workspace?.id ?? '' },
-    { enabled: !!workspace }
+  const { data: teams, isLoading } = api.workspace.getTeams.useQuery(
+    { workspaceUrl },
+    { enabled: !!workspaceUrl }
   )
 
-  const filteredTeams = teams?.filter(team => 
+  const filteredTeams = teams?.filter((team: Team) => 
     team.name.toLowerCase().includes(search.toLowerCase()) ||
     team.identifier.toLowerCase().includes(search.toLowerCase())
   )
@@ -68,7 +80,7 @@ export default function TeamsPage() {
         </div>
         <Select
           value={sortBy}
-          onValueChange={setSortBy}
+          onChange={setSortBy}
           options={[
             { value: 'name', label: 'Sort by name' },
             { value: 'members', label: 'Sort by members' },
@@ -93,7 +105,7 @@ export default function TeamsPage() {
             <div key={team.id} className="grid grid-cols-12 gap-4 p-4 text-sm text-gray-900 hover:bg-gray-50">
               <div className="col-span-3">
                 <div className="flex items-center gap-3">
-                  <TeamAvatar team={team} size="sm" />
+                  <EntityAvatar type="team" id={team.id} size="sm" />
                   <div>
                     <div className="font-medium">{team.name}</div>
                     <div className="text-xs text-gray-500">{team.identifier}</div>

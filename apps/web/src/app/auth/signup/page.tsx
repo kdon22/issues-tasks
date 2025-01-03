@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { trpc } from '@/lib/trpc/client'
+import Link from 'next/link'
+import { api } from '@/lib/trpc/client'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { stringToColor } from '@/lib/utils'
+import { stringToColor, slugify } from '@/lib/utils'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -15,22 +16,12 @@ export default function SignupPage() {
   const [workspaceName, setWorkspaceName] = useState('')
   const [error, setError] = useState('')
 
-  const signup = trpc.auth.signup.useMutation({
+  const signup = api.auth.signup.useMutation({
     onSuccess: () => {
       router.push('/auth/login')
     },
     onError: (error) => {
-      // Parse the error message if it's a JSON string
-      try {
-        const parsedError = JSON.parse(error.message)
-        if (Array.isArray(parsedError)) {
-          setError(parsedError[0].message)
-        } else {
-          setError(error.message)
-        }
-      } catch {
-        setError(error.message)
-      }
+      setError(error.message)
     }
   })
 
@@ -38,14 +29,8 @@ export default function SignupPage() {
     e.preventDefault()
     setError('')
 
-    // Client-side validation
     if (password.length < 8) {
       setError('Password must be at least 8 characters long')
-      return
-    }
-
-    if (!email.includes('@')) {
-      setError('Please enter a valid email address')
       return
     }
 
@@ -55,6 +40,7 @@ export default function SignupPage() {
         email,
         password,
         workspaceName,
+        workspaceUrl: slugify(workspaceName)
       })
     } catch (err) {
       // Error is handled by onError above
@@ -62,22 +48,24 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
-        <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight">Create your account</h2>
-          </div>
+        <div className="flex justify-center mb-8">
+          <h1 className="text-2xl font-semibold">IssuesTasks</h1>
+        </div>
+
+        <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
+          <h2 className="text-xl font-semibold mb-6">Create your account</h2>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-md p-3 text-sm">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
               {error}
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 Full Name
               </label>
               <Input
@@ -86,12 +74,12 @@ export default function SignupPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                minLength={2}
+                className="w-full"
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email
               </label>
               <Input
@@ -100,11 +88,12 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="w-full"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
               <Input
@@ -113,7 +102,7 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
+                className="w-full"
               />
               <p className="mt-1 text-xs text-gray-500">
                 Must be at least 8 characters long
@@ -121,7 +110,7 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label htmlFor="workspace-name" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="workspace-name" className="block text-sm font-medium text-gray-700 mb-1">
                 Workspace Name
               </label>
               <Input
@@ -130,9 +119,10 @@ export default function SignupPage() {
                 value={workspaceName}
                 onChange={(e) => setWorkspaceName(e.target.value)}
                 required
+                className="w-full"
               />
               <p className="mt-1 text-sm text-gray-500">
-                Your workspace URL will be: issuetasks.com/{workspaceName}
+                Your workspace URL will be: issuetasks.com/{workspaceName && slugify(workspaceName)}
               </p>
             </div>
 
@@ -144,6 +134,16 @@ export default function SignupPage() {
             >
               {signup.isLoading ? 'Creating account...' : 'Sign up'}
             </Button>
+
+            <div className="text-center text-sm">
+              <span className="text-gray-600">Already have an account?</span>{' '}
+              <Link 
+                href="/auth/login" 
+                className="text-blue-600 hover:text-blue-500 font-medium"
+              >
+                Sign in
+              </Link>
+            </div>
           </form>
         </div>
       </div>

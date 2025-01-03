@@ -52,4 +52,12 @@ export function stringToColor(str: string): string {
   }
   
   return colors[Math.abs(hash) % colors.length]
+}
+
+export function formatDate(date: string | Date): string {
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
 } 

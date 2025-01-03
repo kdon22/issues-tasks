@@ -1,29 +1,37 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { trpc } from '@/lib/trpc/client'
+import { useRouter, usePathname } from 'next/navigation'
+import { api } from '@/lib/trpc/client'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { IconPicker } from '@/components/ui/IconPicker'
-import { TeamAvatar } from '@/components/ui/TeamAvatar'
-import { useWorkspace } from '@/hooks/useWorkspace'
+import { Avatar } from '@/components/ui/Avatar'
+import { useWorkspace } from '@/lib/hooks/useWorkspace'
 
 export default function NewTeamPage() {
   const router = useRouter()
-  const { workspace } = useWorkspace()
-  const utils = trpc.useContext()
+  const pathname = usePathname()
+  const workspaceUrl = pathname.split('/')[1]
+  const { workspace } = useWorkspace(workspaceUrl)
+  const utils = api.useContext()
 
   const [name, setName] = useState('')
   const [identifier, setIdentifier] = useState('')
-  const [avatarData, setAvatarData] = useState({
-    type: 'initials' as const,
+  const [avatarData, setAvatarData] = useState<{
+    type: "initials" | "icon" | "emoji" | "image"
+    icon?: string | null
+    color?: string | null
+    emoji?: string | null
+    imageUrl?: string | null
+  }>({
+    type: 'initials',
     icon: null,
     color: null,
     imageUrl: null
   })
 
-  const createTeam = trpc.workspace.createTeam.useMutation({
+  const createTeam = api.workspace.createTeam.useMutation({
     onSuccess: () => {
       utils.workspace.getTeams.invalidate()
       if (workspace) {
@@ -56,14 +64,12 @@ export default function NewTeamPage() {
               imageUrl={avatarData.imageUrl}
               onChange={setAvatarData}
             >
-              <TeamAvatar
-                team={{
-                  name,
-                  avatarType: avatarData.type,
-                  avatarIcon: avatarData.icon,
-                  avatarColor: avatarData.color,
-                  avatarImageUrl: avatarData.imageUrl
-                }}
+              <Avatar
+                type={avatarData.type.toUpperCase() as "INITIALS" | "ICON" | "EMOJI" | "IMAGE"}
+                name={name}
+                icon={avatarData.icon}
+                color={avatarData.color}
+                imageUrl={avatarData.imageUrl}
                 size="lg"
               />
             </IconPicker>

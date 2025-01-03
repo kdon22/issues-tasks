@@ -1,20 +1,15 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
-export function middleware(request: NextRequest) {
-  const session = request.cookies.get('session')
+export async function middleware(request: NextRequest) {
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET 
+  })
 
-  if (!session) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
-
-  try {
-    const parsed = JSON.parse(session.value)
-    if (!parsed.workspace?.url) {
-      // If no workspace in session, redirect to workspace selection
-      return NextResponse.redirect(new URL('/workspace/select', request.url))
-    }
-  } catch {
+  // Protect all routes except auth and public ones
+  if (!token && !request.nextUrl.pathname.startsWith('/auth')) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 

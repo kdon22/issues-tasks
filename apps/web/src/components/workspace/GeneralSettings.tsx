@@ -1,51 +1,36 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { trpc } from '@/lib/trpc/client'
+import { api } from '@/lib/trpc/client'
 import { useParams } from 'next/navigation'
 import { ChangeWorkspaceUrlDialog } from './ChangeWorkspaceUrlDialog'
 import { IconPickerButton } from '@/components/ui/IconPickerButton'
 import { type AvatarData } from '@/types/avatar'
 import { Button } from '@/components/ui/Button'
+import type { Workspace } from '@/lib/types/workspace'
 
-export function GeneralSettings() {
+interface GeneralSettingsProps {
+  workspace: Workspace
+}
+
+export function GeneralSettings({ workspace }: GeneralSettingsProps) {
   const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const params = useParams()
-  const workspaceUrl = params.workspaceUrl as string
   
-  const { data: workspace } = trpc.workspace.getByUrl.useQuery({ 
-    url: workspaceUrl
-  }, {
-    enabled: !!workspaceUrl,
-  })
-
   const [avatarData, setAvatarData] = useState<AvatarData>({
-    id: '',
-    name: '',
-    type: 'initials',
-    icon: null,
-    color: null,
-    imageUrl: null
+    type: 'INITIALS',
+    name: workspace.name,
+    icon: workspace.avatarIcon || undefined,
+    color: workspace.avatarColor || undefined,
+    emoji: workspace.avatarEmoji || undefined,
+    imageUrl: workspace.avatarImageUrl || undefined
   })
 
-  useEffect(() => {
-    if (workspace) {
-      setAvatarData({
-        id: workspace.id,
-        name: workspace.name,
-        type: workspace.avatarType as 'initials' | 'icon' | 'image' || 'initials',
-        icon: workspace.avatarIcon || null,
-        color: workspace.avatarColor || null,
-        imageUrl: workspace.avatarImageUrl || null
-      })
-    }
-  }, [workspace])
-
-  const utils = trpc.useContext()
-  const updateWorkspaceMutation = trpc.workspace.updateWorkspace.useMutation({
+  const utils = api.useContext()
+  const updateMutation = api.workspace.update.useMutation({
     onSuccess: () => {
-      utils.workspace.getByUrl.invalidate()
+      utils.workspace.getCurrent.invalidate()
     }
   })
 
@@ -53,14 +38,10 @@ export function GeneralSettings() {
     if (!workspace) return
     
     // Only update avatar-related fields
-    updateWorkspaceMutation.mutate({
+    updateMutation.mutate({
       workspaceId: workspace.id,
-      // Keep existing workspace data
       name: workspace.name,
       url: workspace.url,
-      fiscalYearStart: workspace.fiscalYearStart,
-      region: workspace.region,
-      // Update avatar fields
       avatarType: newData.type,
       avatarIcon: newData.icon,
       avatarColor: newData.color,
@@ -101,7 +82,7 @@ export function GeneralSettings() {
             </div>
           </div>
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => setIsUrlDialogOpen(true)}
           >
             Change...

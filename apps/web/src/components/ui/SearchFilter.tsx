@@ -6,29 +6,20 @@ import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/lib/utils'
 
 interface SearchFilterProps {
+  value: string
+  onChange: (value: string) => void
   placeholder?: string
-  onSearch: (value: string) => void
   className?: string
 }
 
-export function SearchFilter({ placeholder = 'Filter by name, email or role', onSearch, className }: SearchFilterProps) {
-  const [value, setValue] = useState('')
-  const debouncedValue = useDebounce(value, 300)
-
-  useEffect(() => {
-    onSearch(debouncedValue)
-  }, [debouncedValue, onSearch])
-
+export function SearchFilter({ value, onChange, placeholder, className }: SearchFilterProps) {
   return (
     <Input
       type="search"
-      placeholder={placeholder}
       value={value}
-      onChange={(e) => setValue(e.target.value)}
-      className={cn(
-        'h-11 text-base px-4',
-        className
-      )}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={className}
     />
   )
 } 

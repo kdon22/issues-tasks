@@ -1,4 +1,4 @@
-import { type Role } from '@prisma/client'
+type Role = 'ADMIN' | 'MEMBER' | 'GUEST'
 
 export interface WorkspaceMember {
   id: string

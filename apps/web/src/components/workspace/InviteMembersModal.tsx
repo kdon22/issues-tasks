@@ -5,22 +5,23 @@ import { Dialog } from '../ui/Dialog'
 import { Input } from '../ui/Input'
 import { Dropdown } from '../ui/Dropdown'
 import { MultiSelect } from '../ui/MultiSelect'
-import { trpc } from '../../lib/trpc/client'
+import { api } from '@/lib/trpc/client'
+import type { Team } from '@/lib/types/team'
 
 interface InviteMembersModalProps {
+  workspaceId: string
   isOpen: boolean
   onClose: () => void
-  workspaceId: string
 }
 
-export function InviteMembersModal({ isOpen, onClose, workspaceId }: InviteMembersModalProps) {
+export function InviteMembersModal({ workspaceId, isOpen, onClose }: InviteMembersModalProps) {
   const [emails, setEmails] = useState('')
   const [role, setRole] = useState('MEMBER')
   const [selectedTeams, setSelectedTeams] = useState<string[]>([])
 
-  const { data: teams } = trpc.team.list.useQuery({ workspaceId })
+  const { data: teams } = api.team.list.useQuery({ workspaceId })
   
-  const inviteMutation = trpc.workspace.inviteMembers.useMutation({
+  const inviteMutation = api.workspace.inviteMembers.useMutation({
     onSuccess: () => {
       onClose()
       setEmails('')
@@ -34,15 +35,13 @@ export function InviteMembersModal({ isOpen, onClose, workspaceId }: InviteMembe
     
     inviteMutation.mutate({
       workspaceId,
-      invites: emailList.map(email => ({
-        email,
-        role,
-        teamIds: selectedTeams
-      }))
+      emails: emailList,
+      role: role as 'ADMIN' | 'MEMBER' | 'GUEST',
+      teamIds: selectedTeams
     })
   }
 
-  const teamOptions = teams?.map(team => ({
+  const teamOptions = teams?.map((team: Team) => ({
     label: team.name,
     value: team.id,
     icon: team.icon,

@@ -1,15 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { trpc } from '@/lib/trpc/client'
+import { api } from '@/lib/trpc/client'
 import { Input } from '@/components/ui/Input'
-import { UserAvatar } from '@/components/ui/UserAvatar'
+import { EntityAvatar } from '@/components/ui/EntityAvatar'
 import { IconPicker } from '@/components/ui/IconPicker'
-import { useDebounce } from '@/hooks/useDebounce'
+import { useDebounce } from '@/lib/hooks/useDebounce'
 
 export default function ProfilePage() {
-  const utils = trpc.useContext()
-  const { data: user } = trpc.user.getCurrent.useQuery()
+  const utils = api.useContext()
+  const { data: user } = api.user.getCurrent.useQuery()
   
   const [name, setName] = useState(user?.name || '')
   const [nickname, setNickname] = useState(user?.nickname || '')
@@ -17,13 +17,13 @@ export default function ProfilePage() {
   const debouncedName = useDebounce(name, 500)
   const debouncedNickname = useDebounce(nickname, 500)
 
-  const updateProfile = trpc.user.updateProfile.useMutation({
+  const updateProfile = api.user.updateProfile.useMutation({
     onSuccess: () => {
       utils.user.getCurrent.invalidate()
     }
   })
 
-  const updateAvatar = trpc.user.updateAvatar.useMutation({
+  const updateAvatar = api.user.updateAvatar.useMutation({
     onSuccess: () => {
       utils.user.getCurrent.invalidate()
     }
@@ -64,13 +64,18 @@ export default function ProfilePage() {
           <div className="text-sm font-medium text-gray-700">Icon & Name</div>
           <div className="flex items-center gap-6">
             <IconPicker
-              type={user.avatarType}
+              type={user.avatarType.toLowerCase() as "initials" | "icon" | "emoji" | "image"}
               icon={user.avatarIcon}
               color={user.avatarColor}
-              imageUrl={user.avatarImageUrl}
-              onChange={(avatar) => updateAvatar.mutate(avatar)}
+              onChange={(avatar) => updateAvatar.mutate({
+                avatarType: avatar.type.toUpperCase() as "INITIALS" | "ICON" | "EMOJI" | "IMAGE",
+                avatarIcon: avatar.icon,
+                avatarColor: avatar.color,
+                avatarEmoji: avatar.emoji,
+                avatarImageUrl: avatar.imageUrl
+              })}
             >
-              <UserAvatar user={user} size="lg" />
+              <EntityAvatar type="user" id={user.id} size="lg" />
             </IconPicker>
             <div className="w-1/2">
               <Input

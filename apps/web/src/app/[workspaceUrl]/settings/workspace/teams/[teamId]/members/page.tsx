@@ -1,28 +1,38 @@
 'use client'
 
 import { useState } from 'react'
-import { trpc } from '@/lib/trpc/client'
+import { api } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { UserIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import { UserAvatar } from '@/components/ui/UserAvatar'
+import { EntityAvatar } from '@/components/ui/EntityAvatar'
+
+interface TeamMember {
+  id: string
+  user: {
+    id: string
+    name: string | null
+    email: string
+  }
+  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST'
+}
 
 export default function TeamMembersPage({ params }: { params: { teamId: string } }) {
   const [showInviteForm, setShowInviteForm] = useState(false)
-  const utils = trpc.useContext()
+  const utils = api.useContext()
   
-  const { data: members, isLoading } = trpc.teamMember.list.useQuery({ 
+  const { data: members, isLoading } = api.teamMember.list.useQuery({ 
     teamId: params.teamId 
   })
 
-  const updateRole = trpc.teamMember.updateRole.useMutation({
+  const updateRole = api.teamMember.updateRole.useMutation({
     onSuccess: () => {
       utils.teamMember.list.invalidate()
     },
   })
 
-  const removeMember = trpc.teamMember.remove.useMutation({
+  const removeMember = api.teamMember.remove.useMutation({
     onSuccess: () => {
       utils.teamMember.list.invalidate()
     },
@@ -62,34 +72,25 @@ export default function TeamMembersPage({ params }: { params: { teamId: string }
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {members?.map((member) => (
+            {members?.map((member: TeamMember) => (
               <tr key={member.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <UserAvatar 
-                        user={member.user}
-                        size="md"
-                      />
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {member.user.name}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {member.user.email}
-                      </div>
+                    <EntityAvatar type="user" id={member.user.id} size="md" />
+                    <div className="ml-3">
+                      <div className="font-medium">{member.user.name}</div>
+                      <div className="text-sm text-gray-500">{member.user.email}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Select
                     value={member.role}
-                    onChange={(value) => {
+                    onChange={(value: string) => {
                       updateRole.mutate({
                         teamId: params.teamId,
                         userId: member.user.id,
-                        role: value as 'MEMBER' | 'ADMIN' | 'GUEST',
+                        role: value as 'OWNER' | 'ADMIN' | 'MEMBER' | 'GUEST',
                       })
                     }}
                     options={[
@@ -122,8 +123,8 @@ export default function TeamMembersPage({ params }: { params: { teamId: string }
 }
 
 function InviteMemberForm({ teamId, onClose }: { teamId: string; onClose: () => void }) {
-  const utils = trpc.useContext()
-  const addMember = trpc.teamMember.add.useMutation({
+  const utils = api.useContext()
+  const addMember = api.teamMember.add.useMutation({
     onSuccess: () => {
       utils.teamMember.list.invalidate()
       onClose()

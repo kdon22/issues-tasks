@@ -1,10 +1,27 @@
 'use client'
 
 import { useState } from 'react'
-import { trpc } from '@/lib/trpc/client'
+import { api } from '@/lib/trpc/client'
 import { useParams } from 'next/navigation'
 import { SearchFilter } from '@/components/ui/SearchFilter'
-import { useDebounce } from '@/hooks/useDebounce'
+import { useDebounce } from '@/lib/hooks/useDebounce'
+
+interface WorkspaceMember {
+  id: string
+  role: string
+  user: {
+    id: string
+    name: string | null
+    email: string
+    status: string
+    avatarType: string
+    avatarIcon: string | null
+    avatarColor: string | null
+    avatarEmoji: string | null
+    avatarImageUrl: string | null
+    nickname: string | null
+  }
+}
 
 export default function WorkspaceMembersPage() {
   const params = useParams()
@@ -12,14 +29,19 @@ export default function WorkspaceMembersPage() {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 300)
 
-  const { data: members, isLoading } = trpc.workspace.getMembers.useQuery(
+  const { data: workspace } = api.workspace.getCurrent.useQuery({ 
+    url: workspaceUrl 
+  })
+  
+  const { data: members, isLoading } = api.workspace.getMembers.useQuery(
     { workspaceUrl },
     { enabled: !!workspaceUrl }
   )
 
-  const { data: teams } = trpc.workspace.getTeams.useQuery(
-    { workspaceUrl },
-    { enabled: !!workspaceUrl }
+  const filteredMembers = members?.filter(member => 
+    (member.user.name?.toLowerCase() || '').includes(debouncedSearch.toLowerCase()) ||
+    member.user.email.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    member.role.toLowerCase().includes(debouncedSearch.toLowerCase())
   )
 
   if (isLoading) {
@@ -43,7 +65,7 @@ export default function WorkspaceMembersPage() {
 
       <div className="bg-white rounded-lg shadow">
         <div className="divide-y">
-          {members?.map((member) => (
+          {filteredMembers?.map((member) => (
             <div key={member.id} className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div>

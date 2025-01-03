@@ -1,14 +1,15 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useWorkspace } from '@/hooks/useWorkspace'
+import { useWorkspace } from '@/lib/hooks/useWorkspace'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { settingsNavigation } from '@/config/settings-nav'
 
 export function SettingsNav() {
   const pathname = usePathname()
-  const { workspace } = useWorkspace()
+  const workspaceUrl = pathname.split('/')[1]
+  const { workspace } = useWorkspace(workspaceUrl)
 
   if (!workspace) return null
 

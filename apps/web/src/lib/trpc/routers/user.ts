@@ -26,19 +26,21 @@ export const userRouter = router({
 
   updateAvatar: protectedProcedure
     .input(z.object({
-      type: z.enum(['initials', 'icon', 'image']),
-      icon: z.string().nullable().optional(),
-      color: z.string().nullable().optional(),
-      imageUrl: z.string().nullable().optional(),
+      avatarType: z.enum(['INITIALS', 'ICON', 'EMOJI', 'IMAGE']),
+      avatarIcon: z.string().nullable().optional(),
+      avatarColor: z.string().nullable().optional(),
+      avatarEmoji: z.string().nullable().optional(),
+      avatarImageUrl: z.string().nullable().optional()
     }))
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.user.update({
         where: { id: ctx.session.user.id },
         data: {
-          avatarType: input.type,
-          avatarIcon: input.icon,
-          avatarColor: input.color,
-          avatarImageUrl: input.imageUrl,
+          avatarType: input.avatarType,
+          avatarIcon: input.avatarIcon,
+          avatarColor: input.avatarColor,
+          avatarEmoji: input.avatarEmoji,
+          avatarImageUrl: input.avatarImageUrl,
         }
       })
     }),

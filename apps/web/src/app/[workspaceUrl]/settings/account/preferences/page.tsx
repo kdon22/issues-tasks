@@ -1,21 +1,23 @@
 'use client'
 
-import { useEffect } from 'react'
-import { trpc } from '@/lib/trpc/client'
-import { useWorkspace } from '@/hooks/useWorkspace'
+import { api } from '@/lib/trpc/client'
+import { useWorkspace } from '@/lib/hooks/useWorkspace'
 import { Switch } from '@/components/ui/Switch'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { usePathname } from 'next/navigation'
 
 export default function PreferencesPage() {
-  const { workspace } = useWorkspace()
-  const utils = trpc.useContext()
+  const pathname = usePathname()
+  const workspaceUrl = pathname.split('/')[1]
+  const { workspace } = useWorkspace(workspaceUrl)
+  const utils = api.useContext()
   
-  const { data: preferences, isLoading } = trpc.user.getPreferences.useQuery(
+  const { data: preferences, isLoading } = api.user.getPreferences.useQuery(
     { workspaceId: workspace?.id || '' },
     { enabled: !!workspace?.id }
   )
 
-  const updatePreferences = trpc.user.updatePreferences.useMutation({
+  const updatePreferences = api.user.updatePreferences.useMutation({
     onSuccess: () => {
       utils.user.getPreferences.invalidate()
     }
@@ -70,29 +72,6 @@ export default function PreferencesPage() {
                 onChange={(checked) => handlePreferenceChange('displayFullNames', checked)}
                 label="Display full names"
                 description="Show full names of users instead of shorter usernames"
-              />
-
-              <div>
-                <label className="block text-sm font-medium mb-2">First day of the week</label>
-                <Dropdown
-                  value={preferences.firstDayOfWeek}
-                  onChange={(value) => handlePreferenceChange('firstDayOfWeek', value)}
-                  options={[
-                    { label: 'Monday', value: 'Monday' },
-                    { label: 'Sunday', value: 'Sunday' }
-                  ]}
-                  className="w-48"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  Used for date pickers
-                </p>
-              </div>
-
-              <Switch
-                checked={preferences.useEmoticons}
-                onChange={(checked) => handlePreferenceChange('useEmoticons', checked)}
-                label="Convert text emoticons into emojis"
-                description="Strings like :) will be converted to 😊"
               />
             </div>
           </section>

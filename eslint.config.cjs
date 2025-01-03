@@ -12,6 +12,11 @@ module.exports = [
     rules: {
       '@next/next/no-html-link-for-pages': ['error', 'apps/web/pages'],
     },
+    languageOptions: {
+      parserOptions: {
+        project: ['apps/*/tsconfig.json'],
+      },
+    },
   },
   {
     ignores: ['**/dist/**', '**/node_modules/**', '.next/**'],

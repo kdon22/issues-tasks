@@ -1,17 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { trpc } from '@/lib/trpc/client'
+import { api } from '@/lib/trpc/client'
+import { TRPCClientErrorLike } from '@trpc/client'
 
 export default function JoinWorkspacePage() {
   const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
 
-  const joinMutation = trpc.workspace.join.useMutation({
-    onSuccess: (workspace) => {
+  const joinMutation = api.workspace.join.useMutation({
+    onSuccess: (workspace: { url: string }) => {
       window.location.href = `/${workspace.url}/my-issues`
     },
-    onError: (error) => {
+    onError: (error: TRPCClientErrorLike<any>) => {
       setError(error.message)
     },
   })

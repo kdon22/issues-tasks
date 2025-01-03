@@ -2,20 +2,22 @@
 
 import { useState } from 'react'
 import { Input } from '@/components/ui/Input'
-import { trpc } from '@/lib/trpc/client'
+import { api } from '@/lib/trpc/client'
 import { slugify } from '@/lib/utils'
+import { TRPCClientErrorLike } from '@trpc/client'
+import { type AppRouter } from '@/lib/trpc/routers/_app'
 
 export function WorkspaceCreationForm() {
   const [name, setName] = useState('')
   const [error, setError] = useState('')
 
-  const createMutation = trpc.workspace.create.useMutation({
-    onSuccess: (data) => {
+  const createMutation = api.workspace.create.useMutation({
+    onSuccess: (data: { url: string }) => {
       if (data.url) {
         window.location.href = `/${data.url}/my-issues`
       }
     },
-    onError: (error) => {
+    onError: (error: TRPCClientErrorLike<AppRouter>) => {
       setError(error.message)
     },
   })

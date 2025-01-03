@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { trpc } from '@/lib/trpc/client'
+import { api } from '@/lib/trpc/client'
 import { slugify } from '@/lib/utils'
+import { useRouter } from 'next/router'
 
 export function SignupForm() {
   const [formData, setFormData] = useState({
@@ -14,11 +15,12 @@ export function SignupForm() {
     workspaceName: '', // Added workspace name field
   })
   const [error, setError] = useState('')
+  const router = useRouter()
 
-  const signupMutation = trpc.auth.signup.useMutation({
+  const signupMutation = api.auth.signup.useMutation({
     onSuccess: (data) => {
       if (data.redirectTo) {
-        window.location.href = data.redirectTo
+        router.push(data.redirectTo)
       }
     },
     onError: (error) => {
@@ -36,14 +38,12 @@ export function SignupForm() {
     }
 
     try {
-      await signupMutation.mutate({
-        name: formData.name.trim(),
-        email: formData.email.trim(),
+      await signupMutation.mutateAsync({
+        name: formData.name,
+        email: formData.email,
         password: formData.password,
-        workspace: {
-          name: formData.workspaceName.trim(),
-          url: slugify(formData.workspaceName),
-        },
+        workspaceName: formData.workspaceName.trim(),
+        workspaceUrl: slugify(formData.workspaceName)
       })
     } catch (error) {
       console.error('Signup error:', error)

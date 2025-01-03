@@ -1,46 +1,38 @@
 'use client'
 
+import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { CheckIcon } from '@heroicons/react/20/solid'
+import { CheckIcon } from '@heroicons/react/24/solid'
 
 interface CheckboxProps {
   id?: string
   checked?: boolean
-  onChange?: (checked: boolean) => void
-  label?: string
+  onCheckedChange?: (checked: boolean) => void
   className?: string
 }
 
-export function Checkbox({ 
-  id, 
-  checked = false, 
-  onChange, 
-  label,
-  className 
+export function Checkbox({
+  id,
+  checked,
+  onCheckedChange,
+  className,
 }: CheckboxProps) {
   return (
-    <label className={cn("flex items-center gap-2 cursor-pointer", className)}>
-      <div 
-        className={cn(
-          "w-4 h-4 border rounded flex items-center justify-center",
-          checked ? "bg-primary border-primary" : "border-gray-300",
-        )}
-        onClick={() => onChange?.(!checked)}
-      >
-        {checked && (
-          <CheckIcon className="w-3 h-3 text-white" />
-        )}
-      </div>
-      {label && (
-        <span className="text-sm text-gray-700">{label}</span>
+    <button
+      id={id}
+      role="checkbox"
+      aria-checked={checked}
+      data-state={checked ? 'checked' : 'unchecked'}
+      onClick={() => onCheckedChange?.(!checked)}
+      className={cn(
+        'h-4 w-4 shrink-0 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+        checked && 'bg-blue-600 border-blue-600',
+        className
       )}
-      <input
-        type="checkbox"
-        id={id}
-        checked={checked}
-        onChange={(e) => onChange?.(e.target.checked)}
-        className="sr-only"
-      />
-    </label>
+    >
+      {checked && (
+        <CheckIcon className="h-3 w-3 text-white" />
+      )}
+    </button>
   )
 } 

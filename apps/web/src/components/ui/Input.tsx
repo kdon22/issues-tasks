@@ -1,36 +1,24 @@
 'use client'
 
-import { forwardRef } from 'react'
+import * as React from 'react'
 import { cn } from '@/lib/utils'
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string
-  error?: string
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  error?: boolean
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, label, error, ...props }, ref) => {
-    return (
-      <div className="space-y-2">
-        {label && (
-          <label className="text-sm font-medium text-gray-700">{label}</label>
-        )}
-        <input
-          type={type}
-          className={cn(
-            'block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary',
-            error && 'border-red-500',
-            className
-          )}
-          ref={ref}
-          {...props}
-        />
-        {error && <p className="text-sm text-red-500">{error}</p>}
-      </div>
-    )
-  }
-)
-
-Input.displayName = 'Input'
-
-export { Input } 
+export function Input({ className = '', error, ...props }: InputProps) {
+  return (
+    <input
+      className={`
+        block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 
+        shadow-sm ring-1 ring-inset ring-gray-300 
+        placeholder:text-gray-400 
+        focus:ring-2 focus:ring-inset focus:ring-blue-600 
+        ${error ? 'ring-red-300 focus:ring-red-500' : ''}
+        ${className}
+      `}
+      {...props}
+    />
+  )
+} 

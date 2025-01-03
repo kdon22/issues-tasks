@@ -3,14 +3,18 @@
 import { Fragment } from 'react'
 import { Menu, Transition } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import { trpc } from '@/lib/trpc/client'
+import { api } from '@/lib/trpc/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import type { Workspace } from '@/lib/types/workspace'
+import { EntityAvatar } from '@/components/ui/EntityAvatar'
 
 export function WorkspaceDropdown() {
   const router = useRouter()
-  const { data: currentWorkspace } = trpc.workspace.getCurrent.useQuery()
-  const { data: workspaces } = trpc.workspace.list.useQuery()
+  const { data: currentWorkspace } = api.workspace.getCurrent.useQuery({
+    url: window.location.pathname.split('/')[1]
+  })
+  const { data: workspaces } = api.workspace.list.useQuery()
 
   const handleLogout = async () => {
     // Add logout logic here
@@ -20,9 +24,11 @@ export function WorkspaceDropdown() {
   return (
     <Menu as="div" className="relative inline-block text-left">
       <div>
-        <Menu.Button className="inline-flex w-full justify-between items-center gap-x-1.5 px-3 py-2 text-sm font-semibold text-gray-900">
-          {currentWorkspace?.name}
-          <ChevronDownIcon className="-mr-1 h-5 w-5 text-gray-400" aria-hidden="true" />
+        <Menu.Button className="flex items-center gap-2">
+          {currentWorkspace?.id && (
+            <EntityAvatar type="workspace" id={currentWorkspace.id} size="sm" />
+          )}
+          <span>{currentWorkspace?.name}</span>
         </Menu.Button>
       </div>
 
@@ -69,7 +75,7 @@ export function WorkspaceDropdown() {
                 Switch Workspace
               </div>
               <div className="mt-2 space-y-1">
-                {workspaces?.map((workspace) => (
+                {workspaces?.map((workspace: Workspace) => (
                   <Menu.Item key={workspace.id}>
                     {({ active }) => (
                       <Link

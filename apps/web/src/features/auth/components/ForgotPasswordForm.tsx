@@ -77,7 +77,7 @@ export function ForgotPasswordForm() {
 
         <Button 
           type="submit"
-          isLoading={isLoading}
+          loading={isLoading}
           className="w-full"
         >
           Send reset instructions

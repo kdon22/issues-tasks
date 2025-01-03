@@ -25,6 +25,7 @@ export function IconPickerButton({
               type={data.type}
               name={data.name}
               icon={data.icon}
+              emoji={data.emoji}
               color={data.color}
               imageUrl={data.imageUrl}
             />
@@ -33,16 +34,12 @@ export function IconPickerButton({
           {open && (
             <Popover.Panel static className="absolute left-0 z-50 mt-2">
               <IconPicker
-                value={data.icon || ''}
+                type={data.type}
+                icon={data.icon}
+                emoji={data.emoji}
                 color={data.color}
-                onChange={(icon, color) => {
-                  onChange({
-                    ...data,
-                    type: icon ? 'icon' : 'initials',
-                    icon,
-                    color
-                  })
-                }}
+                imageUrl={data.imageUrl}
+                onChange={(value) => onChange({ ...data, ...value })}
               />
             </Popover.Panel>
           )}

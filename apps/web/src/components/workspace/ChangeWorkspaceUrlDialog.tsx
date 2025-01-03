@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { Dialog } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
-import { trpc } from '@/lib/trpc/client'
-import { type TRPCClientError } from '@trpc/client'
-import { type AppRouter } from '@/lib/trpc/routers'
+import { api } from '@/lib/trpc/client'
+import { TRPCClientErrorLike } from '@trpc/client'
+import { type AppRouter } from '@/lib/trpc/routers/_app'
 
 interface ChangeWorkspaceUrlDialogProps {
   isOpen: boolean
@@ -17,11 +17,12 @@ export function ChangeWorkspaceUrlDialog({ isOpen, onClose, currentUrl }: Change
   const [newUrl, setNewUrl] = useState(currentUrl)
   const [error, setError] = useState('')
 
-  const updateUrlMutation = trpc.workspace.updateUrl.useMutation({
-    onSuccess: (data) => {
-      window.location.href = `/${data.url}/settings/workspace/general`
+  const updateUrlMutation = api.workspace.updateUrl.useMutation({
+    onSuccess: () => {
+      onClose()
+      window.location.reload()
     },
-    onError: (error: TRPCClientError<AppRouter>) => setError(error.message),
+    onError: (error: TRPCClientErrorLike<AppRouter>) => setError(error.message)
   })
 
   const handleSubmit = async (e: React.FormEvent) => {

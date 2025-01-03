@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../../../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -13,15 +14,23 @@ enum UserStatus {
   DISABLED
 }
 
+enum AvatarType {
+  INITIALS
+  ICON
+  EMOJI
+  IMAGE
+}
+
 model User {
   id             String    @id @default(cuid())
   email          String    @unique
   name           String?
   password       String
   nickname       String?
-  avatarType     String    @default("initials")
+  avatarType     AvatarType @default(INITIALS)
   avatarIcon     String?
   avatarColor    String?
+  avatarEmoji     String?
   avatarImageUrl String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -38,9 +47,10 @@ model Workspace {
   id              String    @id @default(cuid())
   name            String
   url             String    @unique
-  avatarType      String    @default("initials")
+  avatarType      AvatarType @default(INITIALS)
   avatarIcon      String?
   avatarColor     String?
+  avatarEmoji     String?
   avatarImageUrl  String?
   fiscalYearStart String    @default("January")
   region          String    @default("United States")
@@ -54,15 +64,17 @@ model Workspace {
 
 model WorkspaceMember {
   id          String    @id @default(cuid())
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   workspaceId String
   role        String    @default("MEMBER")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
+  @@index([workspaceId])
+  @@index([userId])
 }
 
 model UserPreferences {
@@ -85,17 +97,21 @@ model Team {
   name           String
   identifier     String
   description    String?
-  avatarType     String    @default("initials")
+  avatarType     AvatarType @default(INITIALS)
   avatarIcon     String?
   avatarColor    String?
+  avatarEmoji     String?
   avatarImageUrl String?
-  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace      Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   workspaceId    String
   members        TeamMember[]
-  projects        Project[]
+  projects       Project[]
+  sprints        Sprint[]
+  milestones     Milestone[]
+  issues         Issue[]
   settings       Json?     @default("{}")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@unique([workspaceId, identifier])
   @@index([workspaceId])
@@ -199,41 +215,88 @@ model Project {
 }
 
 model Sprint {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   name           String
   identifier     String
   description    String?
-  avatarType     String    @default("initials")
+  status         SprintStatus @default(PLANNED)
+  startDate      DateTime
+  endDate        DateTime
+  goal           String?      // Sprint goal/objective
+  
+  // Avatar fields
+  avatarType     AvatarType   @default(INITIALS)
   avatarIcon     String?
   avatarColor    String?
+  avatarEmoji    String?
   avatarImageUrl String?
+  
+  // Relations
   teamId         String
-  team           Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team           Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  projectId      String?
+  project        Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   issues         Issue[]
-  settings       Json?     @default("{}")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  
+  // Metadata
+  settings       Json?        @default("{}")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@unique([teamId, identifier])
   @@index([teamId])
+  @@index([projectId])
+}
+
+enum SprintStatus {
+  PLANNED    // Not started
+  ACTIVE     // Currently running
+  COMPLETED  // Finished
+  CANCELLED  // Terminated early
 }
 
 model Milestone {
-  id             String    @id @default(cuid())
+  id             String      @id @default(cuid())
   name           String
   identifier     String
   description    String?
-  avatarType     String    @default("initials")
+  targetDate     DateTime
+  status         String      @default("PLANNED")
+  avatarType     AvatarType  @default(INITIALS)
   avatarIcon     String?
   avatarColor    String?
+  avatarEmoji    String?
   avatarImageUrl String?
+  
+  // Team relation
   teamId         String
-  team           Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team           Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  // Add Project relation
+  projectId      String?
+  project        Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  
   issues         Issue[]
-  settings       Json?     @default("{}")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  settings       Json?       @default("{}")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@unique([teamId, identifier])
   @@index([teamId])
+  @@index([projectId])
+}
+
+model ProjectMember {
+  id          String    @id @default(cuid())
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  role        String    @default("MEMBER")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+  @@index([userId])
 }

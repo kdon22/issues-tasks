@@ -3,18 +3,49 @@
 import { useState, Fragment } from 'react'
 import { useParams } from 'next/navigation'
 import { GeneralSettings } from './GeneralSettings'
-import { trpc } from '@/lib/trpc/client'
+import { api } from '@/lib/trpc/client'
 import { Transition } from '@headlessui/react'
 
 export function WorkspaceSettings() {
   const [activeTab, setActiveTab] = useState<'general' | 'members' | 'billing'>('general')
   const params = useParams()
+  if (!params?.workspaceUrl) return null
+  
   const workspaceUrl = params.workspaceUrl as string
 
-  const { data: workspace, isLoading } = trpc.workspace.getByUrl.useQuery(
+  const { data: workspaces } = api.workspace.list.useQuery(undefined, {
+    retry: false,
+    onError: (error) => {
+      console.error('Failed to fetch workspaces:', error)
+    }
+  })
+
+  const { data: workspace, isLoading, error } = api.workspace.getCurrent.useQuery(
     { url: workspaceUrl },
-    { enabled: !!workspaceUrl }
+    { 
+      enabled: !!workspaceUrl && !!workspaces,
+      retry: false
+    }
   )
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (error?.message === 'UNAUTHORIZED') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Please log in</h2>
+          <p>You need to be logged in to view workspace settings</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return <div>Error loading workspace settings</div>
+  }
 
   if (!workspace) return null
 

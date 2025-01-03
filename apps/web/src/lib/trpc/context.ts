@@ -1,37 +1,21 @@
-import { type FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch'
-import { prisma } from '../prisma'
-import { cookies } from 'next/headers'
+import { inferAsyncReturnType } from '@trpc/server'
+import { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/db'
 
-interface Session {
-  user: {
-    id: string
-    email: string
-    name: string
-  }
-  workspace: {
-    id: string
-    url: string
-  }
-}
-
-export async function createContext(opts?: FetchCreateContextFnOptions) {
-  // Get session from cookies
-  const sessionCookie = cookies().get('session')
-  let session: Session | null = null
-
-  if (sessionCookie?.value) {
-    try {
-      session = JSON.parse(sessionCookie.value)
-    } catch {
-      session = null
-    }
-  }
+export async function createContext({
+  req,
+  resHeaders,
+}: FetchCreateContextFnOptions) {
+  const session = await getServerSession(authOptions)
 
   return {
-    prisma,
+    req,
+    resHeaders,
     session,
-    req: opts?.req,
+    prisma,
   }
 }
 
-export type Context = Awaited<ReturnType<typeof createContext>> 
+export type Context = inferAsyncReturnType<typeof createContext> 

@@ -1,8 +1,9 @@
 'use client'
 
 import { SettingsNav } from './_components/SettingsNav'
-import { useWorkspace } from '@/hooks/useWorkspace'
+import { useWorkspace } from '@/lib/hooks/useWorkspace'
 import { TrpcProvider } from '@/providers/TrpcProvider'
+import { usePathname } from 'next/navigation'
 
 export default function SettingsLayout({
   children,
@@ -19,7 +20,9 @@ export default function SettingsLayout({
 }
 
 function SettingsLayoutContent({ children }: { children: React.ReactNode }) {
-  const { workspace } = useWorkspace()
+  const pathname = usePathname()
+  const workspaceUrl = pathname.split('/')[1]
+  const { workspace } = useWorkspace(workspaceUrl)
 
   if (!workspace) return null
 

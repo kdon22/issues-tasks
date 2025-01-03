@@ -5,8 +5,9 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Dropdown } from '@/components/ui/Dropdown'
-import { trpc } from '@/lib/trpc/client'
+import { api } from '@/lib/trpc/client'
 import { TextArea } from '@/components/ui/TextArea'
+import type { Team } from '@/lib/types/team'
 
 interface InviteMembersDialogProps {
   isOpen: boolean
@@ -21,7 +22,11 @@ export function InviteMembersDialog({ isOpen, onClose }: InviteMembersDialogProp
   const [isTeamsDropdownOpen, setIsTeamsDropdownOpen] = useState(false)
   const teamsDropdownRef = useRef<HTMLDivElement>(null)
 
-  const { data: teams } = trpc.workspace.getTeams.useQuery()
+  const { data: teams } = api.workspace.getTeams.useQuery({
+    workspaceUrl: window.location.pathname.split('/')[1]
+  })
+
+  const { data: session } = api.auth.getSession.useQuery()
 
   // Handle click outside to close teams dropdown
   useEffect(() => {
@@ -35,8 +40,8 @@ export function InviteMembersDialog({ isOpen, onClose }: InviteMembersDialogProp
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const utils = trpc.useContext()
-  const inviteMutation = trpc.workspace.inviteMembers.useMutation({
+  const utils = api.useContext()
+  const inviteMutation = api.workspace.inviteMembers.useMutation({
     onSuccess: () => {
       utils.workspace.getMembers.invalidate()
       onClose()
@@ -60,6 +65,7 @@ export function InviteMembersDialog({ isOpen, onClose }: InviteMembersDialogProp
     }
 
     inviteMutation.mutate({
+      workspaceId: session?.workspace.id!,
       emails: emailList,
       role: role as 'ADMIN' | 'MEMBER' | 'GUEST',
       teamIds: selectedTeams.map(team => team.id)
@@ -147,7 +153,7 @@ export function InviteMembersDialog({ isOpen, onClose }: InviteMembersDialogProp
             {isTeamsDropdownOpen && teams && (
               <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200">
                 <div className="py-1">
-                  {teams.map(team => (
+                  {teams.map((team: Team) => (
                     <div
                       key={team.id}
                       className={`px-4 py-2 hover:bg-gray-100 cursor-pointer ${
@@ -177,7 +183,7 @@ export function InviteMembersDialog({ isOpen, onClose }: InviteMembersDialogProp
         <div className="flex justify-end space-x-3">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={onClose}
           >
             Cancel
