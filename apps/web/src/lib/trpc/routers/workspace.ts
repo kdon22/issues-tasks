@@ -204,6 +204,9 @@ export const workspaceRouter = router({
               userId: ctx.session.user.id
             }
           }
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
       })
       return workspaces
