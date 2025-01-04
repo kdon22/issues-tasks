@@ -1,32 +1,36 @@
-export const settingsNavigation = [
-  {
-    title: 'Workspace',
-    items: [
-      {
-        label: 'General',
-        href: 'workspace/general'
-      },
-      {
-        label: 'Members',
-        href: 'workspace/members'
-      },
-      {
-        label: 'Teams',
-        href: 'workspace/teams'
-      }
-    ]
-  },
-  {
-    title: 'Account',
-    items: [
-      {
-        label: 'Profile',
-        href: 'account/profile'
-      },
-      {
-        label: 'Preferences',
-        href: 'account/preferences'
-      }
-    ]
-  }
-] 
+import { type SettingsNavigation } from '@/types/navigation'
+
+export const settingsNavigation: SettingsNavigation = {
+  sections: [
+    {
+      label: 'WORKSPACE',
+      items: [
+        {
+          label: 'General',
+          href: '/settings/workspace/general',
+        },
+        {
+          label: 'Teams',
+          href: '/settings/workspace/teams',
+        },
+        {
+          label: 'Members',
+          href: '/settings/workspace/members',
+        },
+      ],
+    },
+    {
+      label: 'ACCOUNT',
+      items: [
+        {
+          label: 'Profile',
+          href: '/settings/account/profile',
+        },
+        {
+          label: 'Preferences',
+          href: '/settings/account/preferences',
+        },
+      ],
+    },
+  ],
+} 
