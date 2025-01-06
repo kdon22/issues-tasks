@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.0.18",
-    "@prisma/client": "5.22.0",
+    "@prisma/client": "^5.0.0",
+    "@radix-ui/react-tooltip": "^1.1.6",
     "@tanstack/react-query": "4.29.19",
     "@trpc/client": "10.34.0",
     "@trpc/next": "10.34.0",
@@ -26,8 +27,9 @@
     "lucide-react": "^0.299.0",
     "next": "14.2.22",
     "next-auth": "4.24.11",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "resend": "^4.0.1",
     "superjson": "1.13.1",
     "tailwind-merge": "^2.6.0",
     "tslib": "^2.6.2"
@@ -37,12 +39,15 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/next-auth": "^3.15.0",
     "@types/node": "20.10.0",
-    "@types/react": "18.2.0",
-    "@types/react-dom": "18.2.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.18",
     "postcss": "^8.4.35",
-    "prisma": "5.22.0",
+    "prisma": "^5.0.0",
     "tailwindcss": "^3.4.1",
-    "typescript": "5.3.3"
+    "typescript": "^5.0.0"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
   }
-} 
+}

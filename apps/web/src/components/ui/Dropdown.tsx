@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment } from 'react'
+import { Fragment, type FC, type ReactNode } from 'react'
 import { Menu, Transition } from '@headlessui/react'
 import { ChevronDownIcon, CheckIcon } from '@heroicons/react/24/solid'
 import { cn } from '@/lib/utils'
@@ -9,18 +9,23 @@ interface DropdownProps {
   value: string;
   onChange: (value: string) => void;
   options: Array<{
-    value: string;
     label: string;
+    value: string;
   }>;
   className?: string;
+  children?: ReactNode;
 }
 
-export function Dropdown({ value, onChange, options, className }: DropdownProps) {
+export const Dropdown: FC<DropdownProps> = ({ value, onChange, options, className, children }) => {
   const selectedOption = options.find(option => option.value === value)
 
   return (
-    <div className="space-y-2">
-      <div>
+    <Menu as="div" className="relative inline-block text-left">
+      {children ? (
+        <Menu.Button className="inline-flex items-center">
+          {children}
+        </Menu.Button>
+      ) : (
         <Menu.Button className={cn(
           "inline-flex items-center justify-between gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50",
           className
@@ -28,7 +33,7 @@ export function Dropdown({ value, onChange, options, className }: DropdownProps)
           {selectedOption?.label}
           <ChevronDownIcon className="-mr-1 h-5 w-5 text-gray-400" aria-hidden="true" />
         </Menu.Button>
-      </div>
+      )}
 
       <Transition
         as={Fragment}
@@ -38,9 +43,8 @@ export function Dropdown({ value, onChange, options, className }: DropdownProps)
         leave="transition ease-in duration-75"
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
-        show={open}
       >
-        <Menu.Items className="absolute left-0 z-10 mt-2 w-max min-w-full origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+        <Menu.Items className="absolute right-0 z-10 mt-2 w-max min-w-full origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
           <div className="py-1">
             {options.map((option) => (
               <Menu.Item key={option.value}>
@@ -63,6 +67,6 @@ export function Dropdown({ value, onChange, options, className }: DropdownProps)
           </div>
         </Menu.Items>
       </Transition>
-    </div>
+    </Menu>
   )
 } 

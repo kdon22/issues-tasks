@@ -1,20 +1,7 @@
 'use client'
 
-import { api } from '@/lib/trpc/client'
+import { useWorkspaceContext } from '@/providers/WorkspaceProvider'
 
-
-export function useWorkspace(workspaceUrl: string) {
-  const { data: workspace, isLoading, error } = api.workspace.getCurrent.useQuery(
-    { url: workspaceUrl },
-    {
-      enabled: !!workspaceUrl,
-      retry: false
-    }
-  )
-
-  return {
-    workspace,
-    isLoading,
-    error
-  }
+export function useWorkspace() {
+  return useWorkspaceContext()
 } 

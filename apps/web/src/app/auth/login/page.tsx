@@ -8,9 +8,11 @@ import { api } from '@/lib/trpc/client'
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl')
+  const callbackUrl = searchParams?.get('callbackUrl') ?? null
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  const utils = api.useContext()
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -30,26 +32,33 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError('Invalid email or password')
+        setIsLoading(false)
         return
       }
 
-      // After successful login, fetch workspaces
-      const response = await fetch('/api/trpc/workspace.list')
-      const { result: { data: workspaces } } = await response.json()
-      
-      if (workspaces?.[0]) {
-        // Redirect to first workspace's my-issues page
-        router.push(`/${workspaces[0].url}/my-issues`)
-      } else if (callbackUrl) {
-        router.push(callbackUrl)
-      } else {
-        router.push('/workspace/new')
+      // Wait a bit for the session to be established
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      try {
+        const workspaces = await utils.workspace.list.fetch()
+        
+        if (workspaces?.[0]) {
+          router.push(`/${workspaces[0].url}/my-issues`)
+        } else if (callbackUrl) {
+          router.push(callbackUrl)
+        } else {
+          router.push('/workspace/new')
+        }
+        
+        router.refresh()
+      } catch (workspaceError) {
+        console.error('Error fetching workspaces:', workspaceError)
+        setError('Error loading workspaces')
+        setIsLoading(false)
       }
-      
-      router.refresh()
     } catch (error) {
+      console.error('Login error:', error)
       setError('Something went wrong. Please try again.')
-    } finally {
       setIsLoading(false)
     }
   }

@@ -1,53 +1,78 @@
 'use client'
 
 import { useWorkspace } from '@/lib/hooks/useWorkspace'
-import { EntityAvatar } from '@/components/ui/EntityAvatar'
-import { IconPicker } from '@/components/ui/IconPicker'
+import { AvatarPicker } from '@/components/ui/AvatarPicker'
+import { Alert } from '@/components/ui/Alert'
 import { api } from '@/lib/trpc/client'
-import { usePathname } from 'next/navigation'
+import type { AvatarData } from '@/lib/types/avatar'
+import { Avatar } from '@/components/ui/Avatar'
 
 export default function WorkspaceGeneralSettings() {
-  const pathname = usePathname()
-  const workspaceUrl = pathname.split('/')[1]
-  const { workspace } = useWorkspace(workspaceUrl)
+  const { workspace } = useWorkspace()
   const utils = api.useContext()
+  
+  if (!workspace) return null
 
-  const updateAvatar = api.workspace.updateAvatar.useMutation({
+  const updateWorkspace = api.workspace.update.useMutation({
     onSuccess: () => {
       utils.workspace.getCurrent.invalidate()
     }
   })
 
-  if (!workspace) return null
+  const avatarData: AvatarData = {
+    type: workspace.avatarType,
+    icon: workspace.avatarIcon || undefined,
+    color: workspace.avatarColor || 'bg-blue-500',
+    emoji: workspace.avatarEmoji || undefined,
+    imageUrl: workspace.avatarImageUrl || undefined,
+    name: workspace.name
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start space-x-4">
-        <IconPicker
-          type={workspace.avatarType.toLowerCase() as "icon" | "emoji" | "initials" | "image"}
-          icon={workspace.avatarIcon}
-          color={workspace.avatarColor}
-          onChange={(avatar) => updateAvatar.mutate({
-            id: workspace.id,
-            avatarType: avatar.type.toUpperCase() as "INITIALS" | "ICON" | "EMOJI" | "IMAGE",
-            avatarIcon: avatar.icon,
-            avatarColor: avatar.color,
-            avatarEmoji: avatar.emoji,
-            avatarImageUrl: avatar.imageUrl
-          })}
-        >
-          <EntityAvatar type="workspace" id={workspace.id} size="lg" />
-        </IconPicker>
+    <div className="max-w-4xl">
+      <h1 className="text-2xl font-semibold mb-8">Workspace Settings</h1>
+      
+      <div className="bg-white p-6 rounded-lg border border-gray-200 mb-6">
+        <h2 className="text-lg font-medium mb-4">Workspace Avatar</h2>
         
-        <div>
-          <h3 className="text-lg font-medium">{workspace.name}</h3>
-          <p className="text-sm text-gray-500">
-            Update your workspace avatar
-          </p>
+        {updateWorkspace.error && (
+          <Alert variant="error" className="mb-4">
+            Failed to update avatar
+          </Alert>
+        )}
+        
+        <div className="flex items-start gap-6">
+          <AvatarPicker
+            value={{
+              type: workspace.avatarType,
+              icon: workspace.avatarIcon || undefined,
+              color: workspace.avatarColor || 'bg-blue-500',
+              emoji: workspace.avatarEmoji || undefined,
+              imageUrl: workspace.avatarImageUrl || undefined,
+              name: workspace.name
+            }}
+            onChange={(newData) => {
+              updateWorkspace.mutate({
+                name: workspace.name,
+                url: workspace.url,
+                avatarType: newData.type,
+                avatarIcon: newData.icon || null,
+                avatarColor: newData.color || null,
+                avatarEmoji: newData.emoji || null,
+                avatarImageUrl: newData.imageUrl || null
+              })
+            }}
+            name={workspace.name}
+          />
+
+          <div>
+            <h3 className="text-lg font-medium">{workspace.name}</h3>
+            <p className="text-sm text-gray-500">
+              {updateWorkspace.isLoading ? 'Updating...' : 'Update your workspace avatar'}
+            </p>
+          </div>
         </div>
       </div>
-      
-      {/* Other workspace settings... */}
     </div>
   )
 } 

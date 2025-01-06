@@ -5,40 +5,36 @@ import { api } from '@/lib/trpc/client'
 import { useParams } from 'next/navigation'
 import { SearchFilter } from '@/components/ui/SearchFilter'
 import { useDebounce } from '@/lib/hooks/useDebounce'
+import { Avatar } from '@/components/ui/Avatar'
+import type { AvatarData } from '@/lib/types/avatar'
 
 interface WorkspaceMember {
   id: string
+  workspaceId: string
+  userId: string
   role: string
+  createdAt: Date
+  updatedAt: Date
   user: {
-    id: string
     name: string | null
     email: string
-    status: string
-    avatarType: string
-    avatarIcon: string | null
-    avatarColor: string | null
-    avatarEmoji: string | null
-    avatarImageUrl: string | null
-    nickname: string | null
   }
 }
 
 export default function WorkspaceMembersPage() {
-  const params = useParams()
-  const workspaceUrl = params.workspaceUrl as string
+  const params = useParams<{ workspaceUrl: string }>()
+  if (!params) return null
+  
+  const workspaceUrl = params.workspaceUrl
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 300)
 
-  const { data: workspace } = api.workspace.getCurrent.useQuery({ 
-    url: workspaceUrl 
-  })
-  
   const { data: members, isLoading } = api.workspace.getMembers.useQuery(
     { workspaceUrl },
     { enabled: !!workspaceUrl }
   )
 
-  const filteredMembers = members?.filter(member => 
+  const filteredMembers = members?.filter((member: WorkspaceMember) => 
     (member.user.name?.toLowerCase() || '').includes(debouncedSearch.toLowerCase()) ||
     member.user.email.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
     member.role.toLowerCase().includes(debouncedSearch.toLowerCase())
@@ -65,9 +61,17 @@ export default function WorkspaceMembersPage() {
 
       <div className="bg-white rounded-lg shadow">
         <div className="divide-y">
-          {filteredMembers?.map((member) => (
+          {filteredMembers?.map((member: WorkspaceMember) => (
             <div key={member.id} className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
+                <Avatar
+                  data={{
+                    type: 'INITIALS',
+                    name: member.user.name || '',
+                    color: 'bg-blue-500'
+                  }}
+                  size="md"
+                />
                 <div>
                   <div className="font-medium">{member.user.name}</div>
                   <div className="text-sm text-gray-500">{member.user.email}</div>

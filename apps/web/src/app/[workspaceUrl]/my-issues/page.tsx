@@ -1,4 +1,4 @@
-import { trpc } from 'apps/web/src/lib/trpc/client'
+// import { trpc } from 'apps/web/src/lib/trpc/client'
 
 export default function MyIssuesPage() {
   return (

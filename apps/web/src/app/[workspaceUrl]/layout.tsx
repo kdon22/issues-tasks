@@ -1,9 +1,10 @@
 'use client'
 
-import { Sidebar } from '@/components/ui/Sidebar'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { Sidebar } from '@/components/features/sidebar/Sidebar'
+import { useWorkspace } from '@/lib/hooks/useWorkspace'
 
 export default function WorkspaceLayout({
   children,
@@ -12,6 +13,7 @@ export default function WorkspaceLayout({
 }) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { workspace, isLoading } = useWorkspace()
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -19,11 +21,11 @@ export default function WorkspaceLayout({
     }
   }, [status, router])
 
-  if (status === 'loading') {
+  if (status === 'loading' || isLoading) {
     return <div>Loading...</div>
   }
 
-  if (!session) {
+  if (!session || !workspace) {
     return null
   }
 

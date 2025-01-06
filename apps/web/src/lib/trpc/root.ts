@@ -1,6 +1,6 @@
 import { router } from './trpc'
 import { authRouter } from './routers/auth'
-import { userRouter } from './routers/user'
+import { userRouter } from './routers/userProfile'
 import { workspaceRouter } from './routers/workspace'
 import { teamRouter } from './routers/team'
 

@@ -2,6 +2,7 @@
 
 import { appRouter } from '../src/lib/trpc/router'
 import { createContext } from '../src/lib/trpc/context'
+import type { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch'
 
 async function validateTrpc() {
   try {
@@ -15,8 +16,15 @@ async function validateTrpc() {
       }
     }
 
+    // Create mock request for context
+    const mockReq = new Request('http://localhost:3000')
+    const contextOptions: FetchCreateContextFnOptions = {
+      req: mockReq,
+      resHeaders: new Headers()
+    }
+
     // Test context creation
-    const ctx = await createContext({})
+    const ctx = await createContext(contextOptions)
     if (!ctx.prisma) {
       throw new Error('Prisma client not initialized in context')
     }

@@ -1,4 +1,4 @@
-import { type AvatarType } from '@/types/avatar'
+import { type AvatarType } from '@/lib/types/avatar'
 
 export interface Workspace {
   id: string

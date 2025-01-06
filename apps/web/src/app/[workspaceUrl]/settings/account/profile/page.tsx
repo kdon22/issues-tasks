@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/trpc/client'
 import { Input } from '@/components/ui/Input'
-import { EntityAvatar } from '@/components/ui/EntityAvatar'
-import { IconPicker } from '@/components/ui/IconPicker'
 import { useDebounce } from '@/lib/hooks/useDebounce'
+import { AvatarPicker } from '@/components/ui/AvatarPicker'
+import { type AvatarData } from '@/lib/types/avatar'
 
 export default function ProfilePage() {
   const utils = api.useContext()
@@ -13,9 +13,6 @@ export default function ProfilePage() {
   
   const [name, setName] = useState(user?.name || '')
   const [nickname, setNickname] = useState(user?.nickname || '')
-  
-  const debouncedName = useDebounce(name, 500)
-  const debouncedNickname = useDebounce(nickname, 500)
 
   const updateProfile = api.user.updateProfile.useMutation({
     onSuccess: () => {
@@ -23,30 +20,7 @@ export default function ProfilePage() {
     }
   })
 
-  const updateAvatar = api.user.updateAvatar.useMutation({
-    onSuccess: () => {
-      utils.user.getCurrent.invalidate()
-    }
-  })
-
-  // Update when initial data loads
-  useEffect(() => {
-    if (user) {
-      setName(user.name || '')
-      setNickname(user.nickname || '')
-    }
-  }, [user])
-
-  // Auto-save on debounced changes
-  useEffect(() => {
-    if (user && (debouncedName !== user.name || debouncedNickname !== user.nickname)) {
-      updateProfile.mutate({
-        name: debouncedName,
-        nickname: debouncedNickname,
-      })
-    }
-  }, [debouncedName, debouncedNickname, user])
-
+  // Return early if no user data
   if (!user) return null
 
   return (
@@ -59,24 +33,32 @@ export default function ProfilePage() {
       </div>
 
       <div className="space-y-6">
-        {/* Icon & Name Section */}
+        {/* Avatar & Name Section */}
         <div className="space-y-4">
-          <div className="text-sm font-medium text-gray-700">Icon & Name</div>
+          <div className="text-sm font-medium text-gray-700">Avatar & Name</div>
           <div className="flex items-center gap-6">
-            <IconPicker
-              type={user.avatarType.toLowerCase() as "initials" | "icon" | "emoji" | "image"}
-              icon={user.avatarIcon}
-              color={user.avatarColor}
-              onChange={(avatar) => updateAvatar.mutate({
-                avatarType: avatar.type.toUpperCase() as "INITIALS" | "ICON" | "EMOJI" | "IMAGE",
-                avatarIcon: avatar.icon,
-                avatarColor: avatar.color,
-                avatarEmoji: avatar.emoji,
-                avatarImageUrl: avatar.imageUrl
-              })}
-            >
-              <EntityAvatar type="user" id={user.id} size="lg" />
-            </IconPicker>
+            <AvatarPicker
+              value={{
+                type: user?.avatarType || 'INITIALS',
+                icon: user?.avatarIcon || undefined,
+                color: user?.avatarColor || 'bg-blue-500',
+                emoji: user?.avatarEmoji || undefined,
+                imageUrl: user?.avatarImageUrl || undefined,
+                name: user?.name || ''
+              }}
+              onChange={(newData) => {
+                updateProfile.mutate({
+                  name,
+                  nickname,
+                  type: newData.type,
+                  icon: newData.icon || null,
+                  color: newData.color || null,
+                  emoji: newData.emoji || null,
+                  imageUrl: newData.imageUrl || null
+                })
+              }}
+              name={name}
+            />
             <div className="w-1/2">
               <Input
                 value={name}
@@ -101,7 +83,7 @@ export default function ProfilePage() {
         <div className="w-1/2 space-y-1.5">
           <div className="text-sm font-medium text-gray-700">Email</div>
           <Input
-            value={user.email}
+            value={user?.email || ''}
             readOnly
             disabled
             className="bg-gray-50"

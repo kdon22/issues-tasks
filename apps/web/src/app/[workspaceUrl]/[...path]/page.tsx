@@ -1,59 +1,23 @@
-import { notFound } from 'next/navigation'
-interface WorkspacePageProps {
-  params: {
-    workspaceUrl: string
-    path: string[]
-  }
-}
+'use client'
 
-export default function WorkspacePage({ params }: WorkspacePageProps) {
-  const { path } = params
+import { useWorkspace } from '@/lib/hooks/useWorkspace'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
-  // Handle different workspace routes
-  switch (path[0]) {
-    case 'my-issues':
-      return (
-        <div className="p-8">
-          <h1 className="text-2xl font-semibold mb-4">My Issues</h1>
-          {/* Content will be added later */}
-        </div>
-      )
+export default function CatchAllPage() {
+  const router = useRouter()
+  const { workspace, isLoading } = useWorkspace()
 
-    case 'inbox':
-      return (
-        <div className="p-8">
-          <h1 className="text-2xl font-semibold mb-4">Inbox</h1>
-          {/* Content will be added later */}
-        </div>
-      )
+  useEffect(() => {
+    if (!isLoading && workspace) {
+      // Redirect to my-issues if no specific path
+      router.replace(`/${workspace.url}/my-issues`)
+    }
+  }, [workspace, isLoading, router])
 
-    case 'all-issues':
-      return (
-        <div className="p-8">
-          <h1 className="text-2xl font-semibold mb-4">All Issues</h1>
-          {/* Content will be added later */}
-        </div>
-      )
-
-    case 'active-issues':
-      return (
-        <div className="p-8">
-          <h1 className="text-2xl font-semibold mb-4">Active Issues</h1>
-          {/* Content will be added later */}
-        </div>
-      )
-
-    case 'settings':
-      if (path[1] === 'account' && path[2] === 'preferences') {
-        return (
-          <div className="p-8">
-            <h1 className="text-2xl font-semibold mb-4">Account Preferences</h1>
-            {/* Preferences content */}
-          </div>
-        )
-      }
-      break
+  if (isLoading) {
+    return <div>Loading...</div>
   }
 
-  return notFound()
+  return null
 } 

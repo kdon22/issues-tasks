@@ -1,6 +1,6 @@
 import { Inter } from 'next/font/google'
 import '@/app/globals.css'
-import { Providers } from './providers'
+import { Providers } from '@/providers/Providers'
 
 export const metadata = {
   title: 'IssuesTasks',

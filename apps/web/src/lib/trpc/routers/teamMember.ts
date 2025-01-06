@@ -1,5 +1,6 @@
-import { router, protectedProcedure } from '../trpc'
 import { z } from 'zod'
+import { router, protectedProcedure } from '../trpc'
+import type { AvatarData } from '@/lib/types/avatar'
 
 export const teamMemberRouter = router({
   list: protectedProcedure
@@ -7,7 +8,20 @@ export const teamMemberRouter = router({
     .query(async ({ ctx, input }) => {
       return ctx.prisma.teamMember.findMany({
         where: { teamId: input.teamId },
-        include: { user: true }
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarType: true,
+              avatarIcon: true,
+              avatarColor: true,
+              avatarEmoji: true,
+              avatarImageUrl: true
+            }
+          }
+        }
       })
     }),
 
@@ -21,8 +35,8 @@ export const teamMemberRouter = router({
       return ctx.prisma.teamMember.update({
         where: {
           userId_teamId: {
-            teamId: input.teamId,
-            userId: input.userId
+            userId: input.userId,
+            teamId: input.teamId
           }
         },
         data: { role: input.role }
@@ -38,8 +52,8 @@ export const teamMemberRouter = router({
       return ctx.prisma.teamMember.delete({
         where: {
           userId_teamId: {
-            teamId: input.teamId,
-            userId: input.userId
+            userId: input.userId,
+            teamId: input.teamId
           }
         }
       })
@@ -48,14 +62,19 @@ export const teamMemberRouter = router({
   add: protectedProcedure
     .input(z.object({
       teamId: z.string(),
-      userId: z.string(),
-      role: z.enum(['OWNER', 'ADMIN', 'MEMBER', 'GUEST'])
+      email: z.string().email(),
+      role: z.enum(['MEMBER', 'ADMIN', 'GUEST'])
     }))
     .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: input.email }
+      })
+      if (!user) throw new Error('User not found')
+
       return ctx.prisma.teamMember.create({
         data: {
           teamId: input.teamId,
-          userId: input.userId,
+          userId: user.id,
           role: input.role
         }
       })

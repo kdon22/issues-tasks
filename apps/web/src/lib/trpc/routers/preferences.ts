@@ -1,14 +1,22 @@
-import { router, publicProcedure } from '../trpc'
+import { router, protectedProcedure } from '../trpc'
 import { z } from 'zod'
+import { TRPCError } from '@trpc/server'
 
 export const preferencesRouter = router({
-  getCurrent: publicProcedure
+  getCurrent: protectedProcedure
     .query(async ({ ctx }) => {
+      if (!ctx.session.workspace) {
+        throw new TRPCError({ 
+          code: 'PRECONDITION_FAILED',
+          message: 'No workspace selected' 
+        })
+      }
+
       const preferences = await ctx.prisma.userPreferences.findUnique({
         where: {
           userId_workspaceId: {
-            userId: ctx.session?.user?.id!,
-            workspaceId: ctx.session?.workspace?.id!
+            userId: ctx.session.user.id,
+            workspaceId: ctx.session.workspace.id
           }
         }
       })
@@ -22,7 +30,7 @@ export const preferencesRouter = router({
       }
     }),
 
-  update: publicProcedure
+  update: protectedProcedure
     .input(z.object({
       homeView: z.string().optional(),
       fontSize: z.string().optional(),

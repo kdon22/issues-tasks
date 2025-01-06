@@ -1,20 +1,22 @@
 import { router } from '../trpc'
+import { userRouter } from './userProfile'
 import { workspaceRouter } from './workspace'
-import { authRouter } from './auth'
-import { userRouter } from './user'
-import { teamRouter } from './team'
-import { preferencesRouter } from './preferences'
-import { healthRouter } from './health'
+import { avatarRouter } from './avatar'
 import { teamMemberRouter } from './teamMember'
+import { teamRouter } from './team'
+import { authRouter } from './auth'
+import { healthRouter } from './health'
+import { userPreferencesRouter } from './userPreferences'
 
 export const appRouter = router({
-  workspace: workspaceRouter,
-  auth: authRouter,
   user: userRouter,
+  workspace: workspaceRouter,
+  avatar: avatarRouter,
+  teamMember: teamMemberRouter,
   team: teamRouter,
-  preferences: preferencesRouter,
+  auth: authRouter,
   health: healthRouter,
-  teamMember: teamMemberRouter
+  preferences: userPreferencesRouter,
 })
 
 export type AppRouter = typeof appRouter 

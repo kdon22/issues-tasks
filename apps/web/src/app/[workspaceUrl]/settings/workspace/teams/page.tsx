@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { api } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/Button'
 import { EntityAvatar } from '@/components/ui/EntityAvatar'
@@ -11,139 +11,61 @@ import { Select } from '@/components/ui/Select'
 import { formatDate } from '@/lib/utils'
 import { EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
 
-interface Team {
-  id: string
-  name: string
-  identifier: string
-  createdAt: Date
-  _count?: {
-    members: number
-  }
-}
-
 export default function TeamsPage() {
+  const { workspace } = useWorkspace()
   const router = useRouter()
-  const pathname = usePathname()
-  const workspaceUrl = pathname.split('/')[1]
-  const { workspace } = useWorkspace(workspaceUrl)
-  const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState('name')
-  
-  const { data: teams, isLoading } = api.workspace.getTeams.useQuery(
-    { workspaceUrl },
-    { enabled: !!workspaceUrl }
+  const { data: teams } = api.team.list.useQuery(
+    { workspaceId: workspace?.id ?? '' },
+    { enabled: !!workspace?.id }
   )
 
-  const filteredTeams = teams?.filter((team: Team) => 
-    team.name.toLowerCase().includes(search.toLowerCase()) ||
-    team.identifier.toLowerCase().includes(search.toLowerCase())
+  if (!workspace) return null
+
+  const sortedTeams = [...(teams || [])].sort((a, b) => 
+    a.name.localeCompare(b.name)
   )
-
-  const sortedTeams = [...(filteredTeams || [])].sort((a, b) => {
-    switch (sortBy) {
-      case 'name':
-        return a.name.localeCompare(b.name)
-      case 'members':
-        return (b._count?.members || 0) - (a._count?.members || 0)
-      case 'created':
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      default:
-        return 0
-    }
-  })
-
-  if (isLoading) return <div>Loading...</div>
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold leading-7 text-gray-900">Teams</h2>
-        <Button
-          onClick={() => {
-            if (workspace) {
-              router.push(`/${workspace.url}/settings/workspace/teams/new`)
-            }
-          }}
+    <div className="max-w-5xl">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Teams</h1>
+        <Button 
+          onClick={() => router.push(`/${workspace.url}/settings/workspace/teams/new`)}
         >
-          Create Team
+          New team
         </Button>
       </div>
 
-      <div className="flex gap-4 items-center">
-        <div className="flex-1">
-          <Input
-            placeholder="Filter teams..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-xs"
-          />
-        </div>
-        <Select
-          value={sortBy}
-          onChange={setSortBy}
-          options={[
-            { value: 'name', label: 'Sort by name' },
-            { value: 'members', label: 'Sort by members' },
-            { value: 'created', label: 'Sort by created date' },
-          ]}
-          className="w-40"
-        />
-      </div>
-
-      <div className="bg-white rounded-lg border">
-        <div className="grid grid-cols-12 gap-4 p-4 border-b text-sm font-medium text-gray-500">
-          <div className="col-span-3">Team name</div>
-          <div className="col-span-3">Description</div>
-          <div className="col-span-2">Members</div>
-          <div className="col-span-2">Issues</div>
-          <div className="col-span-1">Created</div>
-          <div className="col-span-1"></div>
+      {/* Teams list */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="grid grid-cols-4 gap-4 p-4 border-b border-gray-200 text-sm font-medium text-gray-500">
+          <div className="col-span-2">Name</div>
+          <div>Members</div>
+          <div>Created</div>
         </div>
 
-        <div className="divide-y">
+        <div className="divide-y divide-gray-200">
           {sortedTeams.map((team) => (
-            <div key={team.id} className="grid grid-cols-12 gap-4 p-4 text-sm text-gray-900 hover:bg-gray-50">
-              <div className="col-span-3">
-                <div className="flex items-center gap-3">
-                  <EntityAvatar type="team" id={team.id} size="sm" />
-                  <div>
-                    <div className="font-medium">{team.name}</div>
-                    <div className="text-xs text-gray-500">{team.identifier}</div>
-                  </div>
+            <div key={team.id} className="grid grid-cols-4 gap-4 p-4 text-sm">
+              <div className="col-span-2 flex items-center gap-3">
+                <EntityAvatar 
+                  entityType="team"
+                  entityId={team.id}
+                  size="sm"
+                />
+                <div>
+                  <div className="font-medium text-gray-900">{team.name}</div>
+                  <div className="text-gray-500">{team.identifier}</div>
                 </div>
               </div>
-              <div className="col-span-3 text-gray-500">
-                {team.description || 'No description'}
-              </div>
-              <div 
-                className="col-span-2 text-blue-600 hover:underline cursor-pointer"
-                onClick={() => {
-                  if (workspace) {
-                    router.push(`/${workspace.url}/settings/workspace/teams/${team.id}/members`)
-                  }
-                }}
-              >
+              <div className="text-gray-500">
                 {team._count?.members || 0} members
               </div>
-              <div className="col-span-2 text-gray-500">
-                {team._count?.issues || 0} issues
-              </div>
-              <div className="col-span-1 text-gray-500">
+              <div className="text-gray-500">
                 {formatDate(team.createdAt)}
-              </div>
-              <div className="col-span-1 flex justify-end">
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <EllipsisHorizontalIcon className="w-5 h-5 text-gray-500" />
-                </button>
               </div>
             </div>
           ))}
-
-          {sortedTeams.length === 0 && (
-            <div className="p-4 text-center text-gray-500">
-              No teams found. Create your first team to get started.
-            </div>
-          )}
         </div>
       </div>
     </div>

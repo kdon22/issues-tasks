@@ -11,7 +11,7 @@ export default function WorkspacePage() {
     { url: window.location.pathname.split('/')[1] || '' },
     { retry: false }
   )
-  const { data: preferences, isLoading: preferencesLoading } = api.user.getPreferences.useQuery(
+  const { data: preferences, isLoading: preferencesLoading } = api.preferences.get.useQuery(
     { workspaceId: workspace?.id ?? '' },
     { 
       enabled: !!workspace,

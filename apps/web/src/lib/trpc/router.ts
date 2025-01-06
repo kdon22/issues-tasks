@@ -1,5 +1,5 @@
 import { router } from './trpc'
-import { userRouter } from './routers/user'
+import { userRouter } from './routers/userProfile'
 import { workspaceRouter } from './routers/workspace'
 import { authRouter } from './routers/auth'
 // ... other imports

@@ -1,30 +1,36 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/trpc/client'
 import { Avatar } from './Avatar'
-import { type AvatarData, type AvatarSize } from '@/types/avatar'
-
-type EntityType = 'user' | 'team' | 'workspace' | 'project'
+import { Skeleton } from './Skeleton'
+import { type AvatarSize, AVATAR_SIZES } from '@/lib/types/avatar'
 
 interface EntityAvatarProps {
-  type: EntityType
-  id: string
+  entityId: string
+  entityType: 'workspace' | 'team' | 'user'
   size?: AvatarSize
+  className?: string
 }
 
-export function EntityAvatar({ type, id, size = 'md' }: EntityAvatarProps) {
-  const { data: avatar } = useQuery<AvatarData>({
-    queryKey: ['avatar', type, id],
-    queryFn: () => fetch(`/api/avatar/${type}/${id}`).then(res => res.json())
-  })
+export function EntityAvatar({ entityId, entityType, size = 'md', className }: EntityAvatarProps) {
+  const { data: avatarData, isLoading, error } = api.avatar.get.useQuery(
+    { type: entityType, id: entityId },
+    { enabled: !!entityId }
+  )
 
-  if (!avatar) return null
-  
+  if (error || !avatarData) {
+    return null
+  }
+
+  if (isLoading) {
+    return <Skeleton className={`rounded-full ${AVATAR_SIZES[size]}`} />
+  }
+
   return (
     <Avatar 
-      {...avatar} 
-      size={size} 
-      entityType={type === 'user' ? 'user' : 'entity'}
+      data={avatarData}
+      size={size}
+      className={className}
     />
   )
 } 

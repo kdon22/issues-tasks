@@ -1,6 +1,12 @@
-export interface Team {
+import { type AvatarType } from '@/lib/types/avatar'
+
+export interface TeamItem {
   id: string
   name: string
-  icon?: string
-  iconColor?: string
+  identifier: string
+  avatarType: AvatarType
+  avatarIcon?: string | null
+  avatarColor?: string | null
+  avatarEmoji?: string | null
+  avatarImageUrl?: string | null
 } 

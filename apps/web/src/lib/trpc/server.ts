@@ -1,4 +1,4 @@
-import { appRouter } from './routers'
+import { appRouter } from './routers/_app'
 import { createContext } from './context'
 
 export { appRouter, createContext }

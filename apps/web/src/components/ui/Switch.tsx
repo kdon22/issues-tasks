@@ -2,15 +2,16 @@
 
 import { Switch as HeadlessSwitch } from '@headlessui/react'
 import { cn } from '@/lib/utils'
+import { type FC } from 'react'
 
 interface SwitchProps {
   checked: boolean
   onChange: (checked: boolean) => void
-  label: string
+  label?: string
   description?: string
 }
 
-export function Switch({ checked, onChange, label, description }: SwitchProps) {
+export const Switch: FC<SwitchProps> = ({ checked, onChange, label, description }) => {
   return (
     <div className="flex items-start">
       <div className="flex-1">

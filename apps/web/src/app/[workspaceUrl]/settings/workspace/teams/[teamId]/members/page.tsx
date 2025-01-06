@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { UserIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { EntityAvatar } from '@/components/ui/EntityAvatar'
+import { Avatar } from '@/components/ui/Avatar'
+import { type AvatarData } from '@/lib/types/avatar'
 
 interface TeamMember {
   id: string
@@ -76,7 +78,14 @@ export default function TeamMembersPage({ params }: { params: { teamId: string }
               <tr key={member.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    <EntityAvatar type="user" id={member.user.id} size="md" />
+                    <Avatar 
+                      data={{
+                        type: 'INITIALS',
+                        name: member.user.name || member.user.email,
+                        color: 'bg-blue-500'
+                      }} 
+                      size="md"
+                    />
                     <div className="ml-3">
                       <div className="font-medium">{member.user.name}</div>
                       <div className="text-sm text-gray-500">{member.user.email}</div>
@@ -102,7 +111,7 @@ export default function TeamMembersPage({ params }: { params: { teamId: string }
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <Button
-                    variant="ghost"
+                    variant="secondary"
                     onClick={() => {
                       removeMember.mutate({
                         teamId: params.teamId,

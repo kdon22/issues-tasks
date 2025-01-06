@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Input } from './Input'
-import { useDebounce } from '@/hooks/useDebounce'
+import { useDebounce } from '@/lib/hooks/useDebounce'
 import { cn } from '@/lib/utils'
 
 interface SearchFilterProps {

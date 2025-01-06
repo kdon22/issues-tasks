@@ -1,89 +1,45 @@
 'use client'
 
-import { useMemo } from 'react'
-import { type AvatarProps, getInitials, getRandomColor, AVATAR_SIZES } from '@/types/avatar'
 import { cn } from '@/lib/utils'
-import * as Icons from 'lucide-react'
+import { getInitials } from '@/lib/utils'
+import Image from 'next/image'
 import { type LucideIcon } from 'lucide-react'
+import * as LucideIcons from 'lucide-react'
+import { 
+  type AvatarSize, 
+  type AvatarData, 
+  AVATAR_SIZES 
+} from '@/lib/types/avatar'
 
-export function Avatar({
-  type = 'initials',
-  name,
-  icon,
-  color,
-  emoji,
-  imageUrl,
-  size = 'md',
-  entityType = 'user',
-  className
-}: AvatarProps & { entityType?: 'user' | 'entity' }) {
-  const initials = useMemo(() => getInitials(name, entityType), [name, entityType])
-  const backgroundColor = useMemo(() => color || getRandomColor(), [color])
-  
-  const baseClasses = cn(
-    'rounded-full flex items-center justify-center',
-    AVATAR_SIZES[size],
-    className
-  )
+interface AvatarProps {
+  data: AvatarData
+  size?: AvatarSize
+  className?: string
+}
 
-  switch (type) {
-    case 'image':
-      if (imageUrl) {
-        return (
-          <img 
-            src={imageUrl}
-            alt={name}
-            className={cn(baseClasses, 'object-cover')}
-          />
-        )
-      }
-      break
+export function Avatar({ data: { type, name, icon, color, emoji, imageUrl }, size = 'md', className }: AvatarProps) {
+  const initials = getInitials(name)
+  const IconComponent = icon ? (LucideIcons[icon as keyof typeof LucideIcons] as LucideIcon) : null
 
-    case 'icon':
-      if (icon) {
-        const IconComponent = Icons[icon as keyof typeof Icons] as LucideIcon
-        return (
-          <div 
-            className={baseClasses}
-            style={{ backgroundColor: color || '#6B7280' }}
-          >
-            {IconComponent && (
-              <IconComponent 
-                className="w-1/2 h-1/2 text-white" 
-                aria-hidden="true"
-              />
-            )}
-          </div>
-        )
-      }
-      break
-
-    case 'emoji':
-      if (emoji) {
-        const emojiSizes = {
-          sm: 'text-lg',
-          md: 'text-xl',
-          lg: 'text-2xl',
-          xl: 'text-3xl'
-        }
-        return (
-          <div className={cn(baseClasses, 'bg-gray-100')}>
-            <span className={emojiSizes[size]}>{emoji}</span>
-          </div>
-        )
-      }
-      break
-  }
-
-  // Default or fallback to initials
   return (
-    <div 
-      className={baseClasses}
-      style={{ backgroundColor }}
+    <div
+      className={cn(
+        'relative inline-flex items-center justify-center rounded-lg font-medium text-white',
+        color || 'bg-blue-500',
+        AVATAR_SIZES[size],
+        className
+      )}
     >
-      <span className="text-white font-medium">
-        {initials}
-      </span>
+      {type === 'INITIALS' && initials}
+      {type === 'ICON' && IconComponent && <IconComponent className="w-1/2 h-1/2" />}
+      {type === 'EMOJI' && emoji}
+      {type === 'IMAGE' && imageUrl && (
+        <img 
+          src={imageUrl}
+          alt={name}
+          className="h-full w-full object-cover rounded-lg"
+        />
+      )}
     </div>
   )
 } 
