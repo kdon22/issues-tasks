@@ -1,7 +1,12 @@
 'use client'
 
-import { useWorkspaceContext } from '@/providers/WorkspaceProvider'
+import { useContext } from 'react'
+import { WorkspaceContext } from '@/providers/WorkspaceProvider'
 
 export function useWorkspace() {
-  return useWorkspaceContext()
+  const context = useContext(WorkspaceContext)
+  if (!context) {
+    throw new Error('useWorkspace must be used within a WorkspaceProvider')
+  }
+  return context
 } 

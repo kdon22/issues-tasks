@@ -1,54 +1,51 @@
-import { router, protectedProcedure } from '../trpc'
 import { z } from 'zod'
+import { protectedProcedure, router } from '../trpc'
+import { prisma } from '@/lib/prisma'
 import { TRPCError } from '@trpc/server'
 
 export const preferencesRouter = router({
-  getCurrent: protectedProcedure
-    .query(async ({ ctx }) => {
-      if (!ctx.session.workspace) {
-        throw new TRPCError({ 
-          code: 'PRECONDITION_FAILED',
-          message: 'No workspace selected' 
-        })
+  // Global user preferences
+  getCurrent: protectedProcedure.query(async ({ ctx }) => {
+    let preferences = await prisma.userPreferences.findUnique({
+      where: {
+        userId: ctx.session.user.id
       }
+    })
 
-      const preferences = await ctx.prisma.userPreferences.findUnique({
-        where: {
-          userId_workspaceId: {
-            userId: ctx.session.user.id,
-            workspaceId: ctx.session.workspace.id
-          }
+    if (!preferences) {
+      // Create default preferences if they don't exist
+      preferences = await prisma.userPreferences.create({
+        data: {
+          userId: ctx.session.user.id,
+          defaultHomeView: 'my-issues',
+          fontSize: 'default',
+          interfaceTheme: 'system',
+          usePointerCursor: false,
+          displayFullNames: false
         }
       })
+    }
 
-      return preferences || {
-        homeView: 'my-issues',
-        fontSize: 'default',
-        usePointerCursor: false,
-        displayFullNames: false,
-        interfaceTheme: 'system'
-      }
-    }),
+    return preferences
+  }),
 
   update: protectedProcedure
-    .input(z.object({
-      homeView: z.string().optional(),
-      fontSize: z.string().optional(),
-      usePointerCursor: z.boolean().optional(),
-      displayFullNames: z.boolean().optional(),
-      interfaceTheme: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        defaultHomeView: z.string().optional(),
+        fontSize: z.string().optional(),
+        interfaceTheme: z.string().optional(),
+        usePointerCursor: z.boolean().optional(),
+        displayFullNames: z.boolean().optional()
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.userPreferences.upsert({
+      return prisma.userPreferences.upsert({
         where: {
-          userId_workspaceId: {
-            userId: ctx.session?.user?.id!,
-            workspaceId: ctx.session?.workspace?.id!
-          }
+          userId: ctx.session.user.id
         },
         create: {
-          userId: ctx.session?.user?.id!,
-          workspaceId: ctx.session?.workspace?.id!,
+          userId: ctx.session.user.id,
           ...input
         },
         update: input

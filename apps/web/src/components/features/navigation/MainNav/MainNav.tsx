@@ -8,50 +8,26 @@ import {
 } from 'lucide-react'
 import { useWorkspace } from '@/lib/hooks/useWorkspace'
 import { usePathname } from 'next/navigation'
-import { WorkspaceDropdown } from './WorkspaceDropdown'
-import { NavItem, FolderItem, TeamSection, FavoritesSection } from './components'
-import { api } from '@/lib/trpc/client'
+import { WorkspaceDropdown } from './components/WorkspaceDropdown'
+import { NavItem, TeamSection, FavoritesSection, FolderItem } from './components'
 import { getInitials, stringToColor } from '@/lib/utils'
-import { type AvatarType } from '@/lib/types/avatar'
+import { api } from '@/lib/trpc/client'
+import { signOut } from 'next-auth/react'
+import { Avatar } from '@/components/ui/Avatar'
+import { toAvatarData } from '@/lib/types/avatar'
 
-interface WorkspaceItem {
-  id: string
-  name: string
-  url: string
-  avatarType: AvatarType
-  avatarIcon?: string | null
-  avatarColor?: string | null
-  avatarEmoji?: string | null
-  avatarImageUrl?: string | null
-}
-
-export function Sidebar() {
+export function MainNav() {
   const [workspaceDropdownOpen, setWorkspaceDropdownOpen] = useState(false)
   const [cyclesExpanded, setCyclesExpanded] = useState(true)
   const pathname = usePathname()
-  const { workspace, switchWorkspace } = useWorkspace()
-  const { data: workspaces } = api.workspace.list.useQuery()
+  const { workspace, isLoading, switchWorkspace } = useWorkspace()
+  const { data: workspaces = [] } = api.workspace.list.useQuery()
 
-  if (!workspace) return null
-
-  const workspaceUrl = workspace.url
-  const currentWorkspaceWithColor = {
-    ...workspace,
-    initials: getInitials(workspace.name),
-    color: {
-      from: 'blue-500',
-      to: 'blue-600'
-    }
+  if (isLoading || !workspace) {
+    return null
   }
 
-  const formattedWorkspaces = workspaces?.map((w: WorkspaceItem) => ({
-    ...w,
-    initials: getInitials(w.name),
-    color: {
-      from: `${stringToColor(w.name)}-500`,
-      to: `${stringToColor(w.name)}-600`
-    }
-  })) || []
+  const workspaceUrl = workspace.url
 
   return (
     <div className="w-64 h-screen bg-gray-50 border-r border-gray-200 flex flex-col">
@@ -62,12 +38,15 @@ export function Sidebar() {
             onClick={() => setWorkspaceDropdownOpen(!workspaceDropdownOpen)}
             className="flex items-center gap-2 hover:bg-gray-100 rounded-md py-1.5 px-2 transition-colors group flex-1 min-w-0"
           >
-            <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
-              <span className="text-white font-medium text-sm">{currentWorkspaceWithColor.initials}</span>
-            </div>
+            <Avatar 
+              data={toAvatarData(workspace)} 
+              size="sm" 
+            />
             <div className="flex flex-col items-start min-w-0 flex-1">
               <div className="flex items-center gap-1 w-full">
-                <span className="font-medium text-gray-900 truncate text-sm">{workspace.name}</span>
+                <span className="font-medium text-gray-900 truncate text-sm">
+                  {workspace.name}
+                </span>
                 <ChevronDown 
                   size={14} 
                   className={`text-gray-500 transition-transform duration-200 flex-shrink-0 ${
@@ -89,11 +68,11 @@ export function Sidebar() {
 
           {workspaceDropdownOpen && (
             <WorkspaceDropdown
-              currentWorkspace={currentWorkspaceWithColor}
-              workspaces={formattedWorkspaces}
+              currentWorkspace={workspace}
+              workspaces={workspaces}
               onClose={() => setWorkspaceDropdownOpen(false)}
               onSwitchWorkspace={switchWorkspace}
-              onLogout={() => {}} // This is handled in WorkspaceDropdown
+              onLogout={() => signOut()}
             />
           )}
         </div>

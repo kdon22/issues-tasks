@@ -1,16 +1,7 @@
 import { Inter } from 'next/font/google'
 import '@/app/globals.css'
-import { Providers } from '@/providers/Providers'
-
-export const metadata = {
-  title: 'IssuesTasks',
-  description: 'Task and Issue Management',
-}
-
-const inter = Inter({ 
-  subsets: ['latin'],
-  variable: '--font-inter',
-})
+import { Providers } from '@/providers'
+import { ThemeProvider } from 'next-themes'
 
 export default function RootLayout({
   children,
@@ -18,9 +9,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable} font-sans`}>
+    <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <ThemeProvider attribute="class" defaultTheme="light">
+            {children}
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   )

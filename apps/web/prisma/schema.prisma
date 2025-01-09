@@ -21,6 +21,36 @@ enum AvatarType {
   IMAGE
 }
 
+// Global user preferences
+model UserPreferences {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  defaultHomeView String   @default("my-issues")
+  fontSize        String   @default("default")
+  interfaceTheme  String   @default("system")
+  usePointerCursor Boolean @default(false)
+  displayFullNames Boolean @default(false)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+// Workspace-specific preferences
+model WorkspaceUserPreferences {
+  id              String    @id @default(cuid())
+  userId          String
+  workspaceId     String
+  defaultHomeView String    @default("active-issues")
+  fontSize        String    @default("default")
+  displayFullNames Boolean  @default(false)
+  interfaceTheme  String    @default("system")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace @relation("WorkspacePreferences", fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@map("workspace_user_preferences")
+}
+
 model User {
   id                   String            @id @default(cuid())
   email                String            @unique
@@ -34,7 +64,8 @@ model User {
   avatarImageUrl       String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
-  preferences          UserPreferences[]
+  preferences          UserPreferences?
+  workspacePreferences WorkspaceUserPreferences[]
   workspaces           WorkspaceMember[]
   teams                TeamMember[]
   status               UserStatus        @default(ACTIVE)
@@ -56,7 +87,7 @@ model Workspace {
   fiscalYearStart String            @default("January")
   region          String            @default("United States")
   members         WorkspaceMember[]
-  preferences     UserPreferences[]
+  userPreferences WorkspaceUserPreferences[] @relation("WorkspacePreferences")
   teams           Team[]
   projects        Project[]
   createdAt       DateTime          @default(now())
@@ -75,21 +106,6 @@ model WorkspaceMember {
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, workspaceId])
-}
-
-model UserPreferences {
-  id               String    @id @default(cuid())
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId           String
-  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workspaceId      String
-  defaultHomeView  String    @default("active-issues")
-  fontSize         String    @default("default")
-  usePointerCursor Boolean   @default(false)
-  displayFullNames Boolean   @default(false)
-  interfaceTheme   String    @default("system")
 
   @@unique([userId, workspaceId])
 }

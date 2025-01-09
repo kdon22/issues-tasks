@@ -1,40 +1,20 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
-import { Sidebar } from '@/components/features/sidebar/Sidebar'
-import { useWorkspace } from '@/lib/hooks/useWorkspace'
+import { WorkspaceLayoutClient } from '@/components/features/workspace/WorkspaceLayoutClient'
+import { getWorkspace } from '@/lib/actions/workspace'
 
-export default function WorkspaceLayout({
+export default async function WorkspaceLayout({
   children,
+  params: { workspaceUrl }
 }: {
   children: React.ReactNode
+  params: { workspaceUrl: string }
 }) {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const { workspace, isLoading } = useWorkspace()
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login')
-    }
-  }, [status, router])
-
-  if (status === 'loading' || isLoading) {
-    return <div>Loading...</div>
-  }
-
-  if (!session || !workspace) {
-    return null
-  }
+  const workspace = await getWorkspace(workspaceUrl)
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
-    </div>
+    <WorkspaceLayoutClient initialWorkspace={workspace || null}>
+      {children}
+    </WorkspaceLayoutClient>
   )
 } 

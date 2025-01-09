@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { api } from '@/lib/trpc/client'
 import { useParams } from 'next/navigation'
 import { ChangeWorkspaceUrlDialog } from './ChangeWorkspaceUrlDialog'
-import { AvatarPicker } from '@/components/ui/AvatarPicker'
+import { AvatarPicker } from '@/components/ui/AvatarPicker/AvatarPicker'
 import { type AvatarData } from '@/lib/types/avatar'
 import { Button } from '@/components/ui/Button'
 import type { Workspace } from '@/lib/types/workspace'
@@ -19,30 +19,31 @@ export function GeneralSettings({ workspace }: { workspace: Workspace }) {
     }
   })
 
+  const handleAvatarChange = async (newData: AvatarData) => {
+    await updateWorkspace.mutateAsync({
+      workspaceId: workspace.id,
+      name: workspace.name,
+      type: newData.type,
+      icon: newData.type === 'ICON' ? newData.icon : null,
+      color: 'color' in newData ? newData.color : null,
+      emoji: newData.type === 'EMOJI' ? newData.emoji : null,
+      imageUrl: newData.type === 'IMAGE' ? newData.imageUrl : null
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-6">
         <AvatarPicker
-          value={{
+          data={{
             type: workspace.avatarType,
-            icon: workspace.avatarIcon || undefined,
+            icon: workspace.avatarIcon || null,
             color: workspace.avatarColor || 'bg-blue-500',
-            emoji: workspace.avatarEmoji || undefined,
-            imageUrl: workspace.avatarImageUrl || undefined,
+            emoji: workspace.avatarEmoji || null,
+            imageUrl: workspace.avatarImageUrl || null,
             name: workspace.name
           }}
-          onChange={(newData) => {
-            updateWorkspace.mutate({
-              name: workspace.name,
-              url: workspace.url,
-              avatarType: newData.type,
-              avatarIcon: newData.icon || null,
-              avatarColor: newData.color || null,
-              avatarEmoji: newData.emoji || null,
-              avatarImageUrl: newData.imageUrl || null
-            })
-          }}
-          name={workspace.name}
+          onChange={handleAvatarChange}
         />
         {/* Rest of the component */}
       </div>

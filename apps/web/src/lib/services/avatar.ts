@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { type AvatarData } from '@/lib/types/avatar'
+import { type AvatarData, toAvatarData } from '@/lib/types/avatar'
 
 export const avatarService = {
   async get(type: 'user' | 'team' | 'workspace', id: string): Promise<AvatarData> {
@@ -54,13 +54,9 @@ export const avatarService = {
 
     if (!entity) throw new Error('Entity not found')
 
-    return {
-      type: entity.avatarType,
-      icon: entity.avatarIcon || undefined,
-      color: entity.avatarColor || undefined,
-      emoji: entity.avatarEmoji || undefined,
-      imageUrl: entity.avatarImageUrl || undefined,
-      name: entity.name || ''
-    }
+    return toAvatarData({ 
+      ...entity, 
+      name: entity.name || 'Unknown'
+    })
   }
 } 

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
-import { validateEmail } from '../auth/utils/validation'
+import { validateEmail } from '../utils/validation'
 
 export function ForgotPasswordForm() {
   const [error, setError] = useState('')

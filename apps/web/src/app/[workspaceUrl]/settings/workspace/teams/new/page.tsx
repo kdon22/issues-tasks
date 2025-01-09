@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { api } from '@/lib/trpc/client'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { AvatarPicker } from '@/components/ui/AvatarPicker'
-import { Avatar } from '@/components/ui/Avatar'
+import { AvatarPicker } from '@/components/ui/AvatarPicker/AvatarPicker'
 import { type AvatarData } from '@/lib/types/avatar'
 import { useWorkspace } from '@/lib/hooks/useWorkspace'
 
@@ -19,29 +18,18 @@ export default function NewTeamPage() {
   const [identifier, setIdentifier] = useState('')
   const [avatar, setAvatar] = useState<AvatarData>({
     type: 'INITIALS',
-    color: 'bg-blue-500',
-    icon: undefined,
-    emoji: undefined,
-    imageUrl: undefined,
-    name: ''
+    name,
+    color: null
   })
-
-  if (!workspace) return null
 
   const createTeam = api.team.create.useMutation({
     onSuccess: () => {
       utils.team.list.invalidate()
-      router.push(`/${workspace.url}/settings/workspace/teams`)
+      router.push(`/${workspace?.url}/settings/workspace/teams`)
     }
   })
 
-  const avatarData = {
-    avatarType: avatar.type,
-    avatarIcon: avatar.icon || null,
-    avatarColor: avatar.color || null,
-    avatarEmoji: avatar.emoji || null,
-    avatarImageUrl: avatar.imageUrl || null
-  }
+  if (!workspace) return null
 
   return (
     <div className="max-w-2xl">
@@ -51,14 +39,8 @@ export default function NewTeamPage() {
         <div className="space-y-6">
           <div>
             <AvatarPicker
-              value={avatar}
-              onChange={(newData) => {
-                setAvatar({
-                  ...newData,
-                  name
-                })
-              }}
-              name={name}
+              data={{ ...avatar, name }}
+              onChange={setAvatar}
             />
           </div>
 
@@ -81,20 +63,20 @@ export default function NewTeamPage() {
         </div>
 
         <div className="mt-8 flex justify-end gap-3">
-          <Button
-            variant="secondary"
-            onClick={() => router.back()}
-          >
+          <Button variant="secondary" onClick={() => router.back()}>
             Cancel
           </Button>
           <Button
             onClick={() => {
-              if (!workspace) return
               createTeam.mutate({
                 workspaceUrl: workspace.url,
                 name,
                 identifier,
-                ...avatarData
+                avatarType: avatar.type,
+                avatarIcon: avatar.type === 'ICON' ? avatar.icon : null,
+                avatarColor: 'color' in avatar ? avatar.color : null,
+                avatarEmoji: avatar.type === 'EMOJI' ? avatar.emoji : null,
+                avatarImageUrl: avatar.type === 'IMAGE' ? avatar.imageUrl : null
               })
             }}
             disabled={!name || !identifier || createTeam.isLoading}

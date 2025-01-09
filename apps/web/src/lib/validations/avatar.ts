@@ -1,12 +1,12 @@
 import { z } from 'zod'
-import type { AvatarType } from '@/lib/types/avatar'
 
-export const avatarUpdateSchema = z.object({
+export const avatarSchema = z.object({
   type: z.enum(['INITIALS', 'ICON', 'EMOJI', 'IMAGE']),
+  name: z.string(),
   icon: z.string().nullable(),
   color: z.string().nullable(),
   emoji: z.string().nullable(),
-  imageUrl: z.string().nullable(),
+  imageUrl: z.string().nullable()
 })
 
-export type AvatarUpdateInput = z.infer<typeof avatarUpdateSchema> 
+export type AvatarInput = z.infer<typeof avatarSchema> 

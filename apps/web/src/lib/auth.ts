@@ -10,7 +10,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
@@ -23,38 +23,61 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const isValid = await compare(credentials.password, user.password)
-
-        if (!isValid) {
+        const isPasswordValid = await compare(credentials.password, user.password)
+        if (!isPasswordValid) {
           return null
         }
 
         return {
           id: user.id,
           email: user.email,
-          name: user.name
+          name: user.name,
+          defaultWorkspace: null
         }
       }
     })
   ],
   callbacks: {
-    jwt: async ({ token, user }) => {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-        token.email = user.email
+        console.log('JWT Callback - Processing user:', user.id)
+        
+        // Get user's last accessed workspace
+        const lastWorkspace = await prisma.workspaceMember.findFirst({
+          where: { userId: user.id },
+          include: { workspace: true },
+          orderBy: { lastAccessedAt: 'desc' }
+        })
+
+        console.log('JWT Callback - Found workspace:', lastWorkspace?.workspace?.url)
+
+        if (lastWorkspace) {
+          token.workspace = lastWorkspace.workspace
+          console.log('JWT Callback - Setting workspace in token:', lastWorkspace.workspace.url)
+        }
       }
+      console.log('JWT Callback - Final token workspace:', token?.workspace?.url)
       return token
     },
-    session: async ({ session, token }) => {
+    async session({ session, token }) {
+      console.log('Session Callback - Token:', token)
       if (token) {
         session.user.id = token.id as string
+        session.workspace = token.workspace as any
+        console.log('Session Callback - Final Session:', session)
       }
       return session
+    },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith(baseUrl)) return url
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      return baseUrl
     }
   },
   pages: {
     signIn: '/auth/login',
-    error: '/auth/error',
+    signOut: '/auth/login'
   },
   session: {
     strategy: 'jwt'

@@ -6,7 +6,7 @@ import { teamMemberRouter } from './teamMember'
 import { teamRouter } from './team'
 import { authRouter } from './auth'
 import { healthRouter } from './health'
-import { userPreferencesRouter } from './userPreferences'
+import { preferencesRouter } from './preferences'
 
 export const appRouter = router({
   user: userRouter,
@@ -16,7 +16,7 @@ export const appRouter = router({
   team: teamRouter,
   auth: authRouter,
   health: healthRouter,
-  preferences: userPreferencesRouter,
+  preferences: preferencesRouter,
 })
 
 export type AppRouter = typeof appRouter 

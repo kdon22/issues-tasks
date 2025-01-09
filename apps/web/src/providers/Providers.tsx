@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { httpBatchLink } from '@trpc/client'
 import superjson from 'superjson'
-import { WorkspaceProvider } from './WorkspaceProvider'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -33,9 +32,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <api.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          <WorkspaceProvider>
-            {children}
-          </WorkspaceProvider>
+          {children}
         </QueryClientProvider>
       </api.Provider>
     </SessionProvider>

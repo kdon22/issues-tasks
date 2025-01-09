@@ -1,19 +1,16 @@
-//@ts-check
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: ["@repo/ui"],
   experimental: {
-    serverActions: {
-      bodySizeLimit: '2mb'
-    },
+    serverActions: true,
   },
-  webpack: (config) => {
-    return config
+  images: {
+    domains: [
+      'localhost',
+      process.env.AWS_BUCKET_NAME + '.s3.' + process.env.AWS_REGION + '.amazonaws.com'
+    ]
   },
-  // Add this to ensure proper module resolution
-  transpilePackages: ['@issuestasks/web'],
-  // Configure headers for auth and CORS
   async headers() {
     return [
       {

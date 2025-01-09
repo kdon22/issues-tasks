@@ -12,6 +12,21 @@ interface WorkspaceData {
   url: string
 }
 
+const getAvatarData = (workspace: any): AvatarData => {
+  switch (workspace.avatarType) {
+    case 'INITIALS':
+      return { type: 'INITIALS', name: workspace.name, color: workspace.avatarColor || null }
+    case 'ICON':
+      return { type: 'ICON', name: workspace.name, icon: workspace.avatarIcon || null, color: workspace.avatarColor || null }
+    case 'EMOJI':
+      return { type: 'EMOJI', name: workspace.name, emoji: workspace.avatarEmoji || null }
+    case 'IMAGE':
+      return { type: 'IMAGE', name: workspace.name, imageUrl: workspace.avatarImageUrl || null }
+    default:
+      return { type: 'INITIALS', name: workspace.name, color: null }
+  }
+}
+
 export function WorkspaceSwitcher() {
   const { workspace } = useWorkspace()
   const { data: workspaces } = api.workspace.list.useQuery(undefined, {
@@ -32,14 +47,7 @@ export function WorkspaceSwitcher() {
       })) || []}
     >
       <Avatar
-        data={{
-          type: workspace.avatarType,
-          icon: workspace.avatarIcon || undefined,
-          color: workspace.avatarColor || 'bg-blue-500',
-          emoji: workspace.avatarEmoji || undefined,
-          imageUrl: workspace.avatarImageUrl || undefined,
-          name: workspace.name
-        }}
+        data={getAvatarData(workspace)}
         size="md"
       />
     </Dropdown>

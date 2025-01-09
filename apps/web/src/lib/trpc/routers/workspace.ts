@@ -1,15 +1,19 @@
 import { z } from 'zod'
 import { router, protectedProcedure } from '../trpc'
 import { TRPCError } from '@trpc/server'
-import { avatarUpdateSchema } from '@/lib/validations/avatar'
-import { type AvatarData } from '@/lib/types/avatar'
 import { generateInviteCode } from '@/lib/utils'
+import { type HasAvatar, toAvatarFields } from '@/lib/types/avatar'
+import { avatarSchema } from '@/lib/validations/avatar'
 
 export const workspaceRouter = router({
   getCurrent: protectedProcedure
-    .input(z.object({ url: z.string() }))
+    .input(z.object({ 
+      url: z.string()
+    }).nullish())
     .query(async ({ ctx, input }) => {
-      const workspace = await ctx.prisma.workspace.findFirst({
+      if (!input?.url) return null
+      
+      return ctx.prisma.workspace.findFirst({
         where: {
           url: input.url,
           members: {
@@ -17,27 +21,8 @@ export const workspaceRouter = router({
               userId: ctx.session.user.id
             }
           }
-        },
-      })
-
-      if (!workspace) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Workspace not found or access denied'
-        })
-      }
-
-      await ctx.prisma.workspaceMember.updateMany({
-        where: {
-          userId: ctx.session.user.id,
-          workspaceId: workspace.id
-        },
-        data: {
-          lastAccessedAt: new Date()
         }
       })
-
-      return workspace
     }),
 
   list: protectedProcedure
@@ -51,7 +36,7 @@ export const workspaceRouter = router({
           }
         },
         orderBy: {
-          updatedAt: 'desc'
+          name: 'asc'
         }
       })
     }),
@@ -74,38 +59,13 @@ export const workspaceRouter = router({
   updateAvatar: protectedProcedure
     .input(z.object({
       workspaceId: z.string(),
-      ...avatarUpdateSchema.shape
+      ...avatarSchema.shape
     }))
     .mutation(async ({ ctx, input }) => {
       const { workspaceId, ...avatarData } = input
-
-      const workspace = await ctx.prisma.workspace.findFirst({
-        where: {
-          id: workspaceId,
-          members: {
-            some: {
-              userId: ctx.session.user.id,
-              role: 'ADMIN'
-            }
-          }
-        }
-      })
-
-      if (!workspace) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'You do not have permission to update this workspace'
-        })
-      }
-
       return ctx.prisma.workspace.update({
         where: { id: workspaceId },
-        data: avatarData,
-        select: {
-          id: true,
-          name: true,
-          ...avatarUpdateSchema.shape
-        }
+        data: toAvatarFields(avatarData)
       })
     }),
 
@@ -186,33 +146,39 @@ export const workspaceRouter = router({
     }),
 
   update: protectedProcedure
-    .input(z.object({
-      url: z.string(),
-      name: z.string(),
-      avatarType: z.enum(['INITIALS', 'ICON', 'EMOJI', 'IMAGE']),
-      avatarIcon: z.string().nullable(),
-      avatarColor: z.string().nullable(),
-      avatarEmoji: z.string().nullable(),
-      avatarImageUrl: z.string().nullable()
-    }))
+    .input(
+      z.object({
+        workspaceId: z.string(),
+        name: z.string().min(1).optional(),
+        url: z.string().min(1).optional(),
+        ...avatarSchema.shape
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      // Find workspace by url instead of id
-      const workspace = await ctx.prisma.workspace.findUnique({
-        where: { url: input.url }
+      const { workspaceId, ...data } = input
+      
+      const workspace = await ctx.prisma.workspace.findFirst({
+        where: {
+          id: workspaceId,
+          members: {
+            some: {
+              userId: ctx.session.user.id,
+              role: 'ADMIN'
+            }
+          }
+        }
       })
 
-      if (!workspace) throw new Error('Workspace not found')
+      if (!workspace) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to update this workspace'
+        })
+      }
 
       return ctx.prisma.workspace.update({
-        where: { id: workspace.id },
-        data: {
-          name: input.name,
-          avatarType: input.avatarType,
-          avatarIcon: input.avatarIcon,
-          avatarColor: input.avatarColor,
-          avatarEmoji: input.avatarEmoji,
-          avatarImageUrl: input.avatarImageUrl
-        }
+        where: { id: workspaceId },
+        data
       })
     }),
 

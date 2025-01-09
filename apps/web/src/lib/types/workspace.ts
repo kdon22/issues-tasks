@@ -1,23 +1,9 @@
-import { type AvatarType } from '@/lib/types/avatar'
+import type { WorkspaceMember } from '@prisma/client'
+import type { HasAvatar } from './avatar'
 
-export interface Workspace {
+export interface Workspace extends HasAvatar {
   id: string
   name: string
   url: string
-  avatarType: AvatarType
-  avatarIcon?: string | null
-  avatarColor?: string | null
-  avatarEmoji?: string | null
-  avatarImageUrl?: string | null
   members?: WorkspaceMember[]
-}
-
-interface WorkspaceMember {
-  id: string
-  role: string
-  user: {
-    id: string
-    name: string | null
-    email: string
-  }
 } 

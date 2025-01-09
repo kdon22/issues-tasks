@@ -1,21 +1,19 @@
-import type { Session as NextAuthSession } from 'next-auth'
-import { type AvatarType } from './avatar'
+import type { DefaultSession } from 'next-auth'
+import type { Workspace } from '@prisma/client'
 
-export interface Session extends NextAuthSession {
-  user: {
-    id: string
-    email?: string | null
-    name?: string | null
-    image?: string | null
-    avatarType: AvatarType
-    avatarIcon?: string
-    avatarColor?: string
-    avatarEmoji?: string
-    avatarImageUrl?: string
+declare module 'next-auth' {
+  interface Session extends DefaultSession {
+    user: {
+      id: string
+      email: string
+      name?: string | null
+    }
+    workspace?: Workspace | null
   }
-  workspace?: {
+
+  interface User {
     id: string
-    url: string
-    name: string
-  } | null
+    email: string
+    name?: string | null
+  }
 } 

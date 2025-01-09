@@ -1,65 +1,32 @@
 'use client'
 
 import { signIn } from 'next-auth/react'
-import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { api } from '@/lib/trpc/client'
+import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const callbackUrl = searchParams?.get('callbackUrl') ?? null
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
 
-  const utils = api.useContext()
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError(null)
-
     const formData = new FormData(e.currentTarget)
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
+    
+    const result = await signIn('credentials', {
+      email: formData.get('email') as string,
+      password: formData.get('password') as string,
+      redirect: false,
+    })
 
-    try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      })
-
-      if (result?.error) {
-        setError('Invalid email or password')
-        setIsLoading(false)
-        return
-      }
-
-      // Wait a bit for the session to be established
+    if (result?.ok) {
+      // Wait for session to be established
       await new Promise(resolve => setTimeout(resolve, 500))
-
-      try {
-        const workspaces = await utils.workspace.list.fetch()
-        
-        if (workspaces?.[0]) {
-          router.push(`/${workspaces[0].url}/my-issues`)
-        } else if (callbackUrl) {
-          router.push(callbackUrl)
-        } else {
-          router.push('/workspace/new')
-        }
-        
-        router.refresh()
-      } catch (workspaceError) {
-        console.error('Error fetching workspaces:', workspaceError)
-        setError('Error loading workspaces')
-        setIsLoading(false)
+      
+      const session = await fetch('/api/auth/session').then(res => res.json())
+      
+      if (session?.defaultWorkspace?.url) {
+        router.push(`/${session.defaultWorkspace.url}/my-issues`)
+      } else {
+        router.push('/workspace/new')
       }
-    } catch (error) {
-      console.error('Login error:', error)
-      setError('Something went wrong. Please try again.')
-      setIsLoading(false)
     }
   }
 
@@ -71,7 +38,7 @@ export default function LoginPage() {
             Sign in to your account
           </h2>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email" className="sr-only">
@@ -103,17 +70,12 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {error && (
-            <div className="text-red-500 text-sm text-center">{error}</div>
-          )}
-
           <div>
             <button
               type="submit"
-              disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              Sign in
             </button>
           </div>
         </form>

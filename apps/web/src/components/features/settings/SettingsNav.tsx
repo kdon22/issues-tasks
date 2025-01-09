@@ -3,8 +3,27 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useWorkspace } from '@/lib/hooks/useWorkspace'
-import { settingsNavigation } from '@/config/settings-nav'
 import { cn } from '@/lib/utils'
+
+const settingsNavigation = {
+  sections: [
+    {
+      label: 'WORKSPACE',
+      items: [
+        { label: 'General', href: '/settings/workspace/general' },
+        { label: 'Teams', href: '/settings/workspace/teams' },
+        { label: 'Members', href: '/settings/workspace/members' }
+      ]
+    },
+    {
+      label: 'ACCOUNT',
+      items: [
+        { label: 'Profile', href: '/settings/account' },
+        { label: 'Preferences', href: '/settings/preferences' }
+      ]
+    }
+  ]
+}
 
 export function SettingsNav() {
   const pathname = usePathname()
@@ -27,7 +46,7 @@ export function SettingsNav() {
                   key={href}
                   href={href}
                   className={cn(
-                    'block px-2 py-1 text-sm rounded-md',
+                    'block px-2 py-1.5 text-sm rounded-md',
                     pathname === href
                       ? 'bg-gray-100 text-gray-900'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'

@@ -1,45 +1,103 @@
 'use client'
 
-import { cn } from '@/lib/utils'
-import { getInitials } from '@/lib/utils'
+import { useMemo } from 'react'
 import Image from 'next/image'
-import { type LucideIcon } from 'lucide-react'
-import * as LucideIcons from 'lucide-react'
-import { 
-  type AvatarSize, 
-  type AvatarData, 
-  AVATAR_SIZES 
-} from '@/lib/types/avatar'
+import { cn } from '@/lib/utils'
+import { type AvatarData } from '@/lib/types/avatar'
+import { AVATAR_SIZES } from '@/lib/types/avatar'
 
 interface AvatarProps {
   data: AvatarData
-  size?: AvatarSize
+  size?: keyof typeof AVATAR_SIZES
   className?: string
 }
 
-export function Avatar({ data: { type, name, icon, color, emoji, imageUrl }, size = 'md', className }: AvatarProps) {
-  const initials = getInitials(name)
-  const IconComponent = icon ? (LucideIcons[icon as keyof typeof LucideIcons] as LucideIcon) : null
-
-  return (
-    <div
-      className={cn(
-        'relative inline-flex items-center justify-center rounded-lg font-medium text-white',
-        color || 'bg-blue-500',
+export function Avatar({ data, size = 'md', className }: AvatarProps) {
+  if (!data) {
+    return (
+      <div className={cn(
+        "bg-gray-200 rounded-md flex items-center justify-center",
         AVATAR_SIZES[size],
         className
-      )}
-    >
-      {type === 'INITIALS' && initials}
-      {type === 'ICON' && IconComponent && <IconComponent className="w-1/2 h-1/2" />}
-      {type === 'EMOJI' && emoji}
-      {type === 'IMAGE' && imageUrl && (
-        <img 
-          src={imageUrl}
-          alt={name}
-          className="h-full w-full object-cover rounded-lg"
-        />
-      )}
-    </div>
-  )
+      )}>
+        <span className="text-gray-400">?</span>
+      </div>
+    )
+  }
+
+  const content = useMemo(() => {
+    switch (data.type) {
+      case 'INITIALS':
+        return (
+          <div 
+            className={cn(
+              "rounded-md flex items-center justify-center",
+              data.color || "bg-blue-500",
+              AVATAR_SIZES[size],
+              className
+            )}
+          >
+            <span className="text-white font-medium text-sm">
+              {data.name?.slice(0, 2).toUpperCase()}
+            </span>
+          </div>
+        )
+
+      case 'ICON':
+        return (
+          <div 
+            className={cn(
+              "rounded-md flex items-center justify-center",
+              data.color || "bg-blue-500",
+              AVATAR_SIZES[size],
+              className
+            )}
+          >
+            {data.icon}
+          </div>
+        )
+
+      case 'EMOJI':
+        return (
+          <div 
+            className={cn(
+              "rounded-md flex items-center justify-center bg-gray-100",
+              AVATAR_SIZES[size],
+              className
+            )}
+          >
+            <span className="text-lg">{data.emoji}</span>
+          </div>
+        )
+
+      case 'IMAGE':
+        return (
+          <div className={cn(
+            "relative rounded-md overflow-hidden",
+            AVATAR_SIZES[size],
+            className
+          )}>
+            <Image
+              src={data.imageUrl || ''}
+              alt={data.name || 'Avatar'}
+              fill
+              className="object-cover"
+            />
+          </div>
+        )
+
+      default:
+        return (
+          <div className={cn(
+            "bg-gray-200 rounded-md flex items-center justify-center",
+            AVATAR_SIZES[size],
+            className
+          )}>
+            <span className="text-gray-400">?</span>
+          </div>
+        )
+    }
+  }, [data, size, className])
+
+  return content
 } 

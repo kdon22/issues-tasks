@@ -1,17 +1,11 @@
 'use client'
 
-import { WorkspaceSettings } from '@/components/features/workspace/WorkspaceSettings'
-import { SettingsNav } from './_components/SettingsNav'
+import { SettingsLayout } from '@/components/features/settings/SettingsLayout'
 
-export default function SettingsLayout({
+export default function SettingsPageLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <div className="flex">
-      <SettingsNav />
-      <div className="flex-1">{children}</div>
-    </div>
-  )
+  return <SettingsLayout>{children}</SettingsLayout>
 } 

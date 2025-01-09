@@ -27,7 +27,7 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 })
 
 export const workspaceProtectedProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (!ctx.session?.workspace) {
+  if (!ctx.session?.user?.defaultWorkspace) {
     throw new TRPCError({ 
       code: 'UNAUTHORIZED',
       message: 'No workspace selected'
@@ -36,7 +36,7 @@ export const workspaceProtectedProcedure = protectedProcedure.use(({ ctx, next }
   return next({
     ctx: {
       ...ctx,
-      workspace: ctx.session.workspace
+      workspaceId: ctx.session.user.defaultWorkspace
     },
   })
 }) 
