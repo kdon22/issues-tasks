@@ -14,9 +14,7 @@ export function WorkspaceProvider({ children, initialWorkspace }: WorkspaceProvi
   const [isLoading, setIsLoading] = useState(false)
 
   const switchWorkspace = useCallback(async (newWorkspace: Workspace) => {
-    // Prevent switching to the same workspace
     if (newWorkspace.id === workspace?.id) return
-    
     setIsLoading(true)
     try {
       setWorkspace(newWorkspace)
@@ -25,13 +23,20 @@ export function WorkspaceProvider({ children, initialWorkspace }: WorkspaceProvi
     }
   }, [workspace?.id])
 
-  // Memoize the context value
+  const updateWorkspaceData = useCallback((data: Partial<Workspace>) => {
+    setWorkspace(prev => {
+      if (!prev) return null
+      return { ...prev, ...data }
+    })
+  }, [])
+
   const value = useMemo(() => ({
     workspace,
     setWorkspace,
     isLoading,
-    switchWorkspace
-  }), [workspace, isLoading, switchWorkspace])
+    switchWorkspace,
+    updateWorkspaceData
+  }), [workspace, isLoading, switchWorkspace, updateWorkspaceData])
 
   return (
     <WorkspaceContext.Provider value={value}>

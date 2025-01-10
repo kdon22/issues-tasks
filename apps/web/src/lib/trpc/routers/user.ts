@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { router, protectedProcedure } from '../trpc'
-import { avatarSchema } from '@/lib/validations/avatar'
+import { userProfileUpdateSchema, avatarUpdateSchema } from '@/lib/validations/user'
 import { toAvatarFields } from '@/lib/types/avatar'
 
 export const userRouter = router({
@@ -12,18 +12,24 @@ export const userRouter = router({
     }),
 
   updateAvatar: protectedProcedure
-    .input(z.object({
-      name: z.string(),
-      type: z.enum(['INITIALS', 'ICON', 'EMOJI', 'IMAGE']),
-      icon: z.string().nullable(),
-      color: z.string().nullable(),
-      emoji: z.string().nullable(),
-      imageUrl: z.string().nullable()
-    }))
+    .input(avatarUpdateSchema)
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.user.update({
         where: { id: ctx.session.user.id },
         data: toAvatarFields(input)
+      })
+    }),
+
+  updateProfile: protectedProcedure
+    .input(userProfileUpdateSchema)
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.user.update({
+        where: { id: ctx.session.user.id },
+        data: {
+          name: input.name,
+          nickname: input.nickname,
+          ...toAvatarFields(input)
+        }
       })
     })
 }) 

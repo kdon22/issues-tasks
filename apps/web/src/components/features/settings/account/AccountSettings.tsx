@@ -17,14 +17,17 @@ export function AccountSettings() {
   if (!user) return null
 
   const handleAvatarChange = async (avatarData: AvatarData) => {
-    await updateAvatar.mutateAsync({
-      name: user.name || 'Unknown',
-      type: avatarData.type,
-      icon: avatarData.type === 'ICON' ? avatarData.icon : null,
-      color: 'color' in avatarData ? avatarData.color : null,
-      emoji: avatarData.type === 'EMOJI' ? avatarData.emoji : null,
-      imageUrl: avatarData.type === 'IMAGE' ? avatarData.imageUrl : null
-    })
+    try {
+      await updateAvatar.mutateAsync({
+        type: avatarData.type,
+        icon: avatarData.type === 'ICON' ? avatarData.icon : null,
+        color: 'color' in avatarData ? avatarData.color : null,
+        emoji: avatarData.type === 'EMOJI' ? avatarData.emoji : null,
+        imageUrl: avatarData.type === 'IMAGE' ? avatarData.imageUrl : null
+      })
+    } catch (error) {
+      console.error('Failed to update avatar:', error)
+    }
   }
 
   return (
