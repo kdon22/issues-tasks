@@ -1,5 +1,3 @@
-// import { trpc } from 'apps/web/src/lib/trpc/client'
-
 export default function MyIssuesPage() {
   return (
     <div className="p-8">
@@ -7,4 +5,4 @@ export default function MyIssuesPage() {
       {/* Content will be added later */}
     </div>
   )
-} 
+}

@@ -6,8 +6,7 @@ import {
   LayoutGrid, Star, Users, Plus, HelpCircle, Clock,
   Hash
 } from 'lucide-react'
-import { useWorkspace } from '@/lib/hooks/useWorkspace'
-import { usePathname } from 'next/navigation'
+import { useWorkspace } from '@/lib/context/workspace'
 import { WorkspaceDropdown } from './components/WorkspaceDropdown'
 import { NavItem, TeamSection, FavoritesSection, FolderItem } from './components'
 import { getInitials, stringToColor } from '@/lib/utils'
@@ -19,7 +18,6 @@ import { toAvatarData } from '@/lib/types/avatar'
 export function MainNav() {
   const [workspaceDropdownOpen, setWorkspaceDropdownOpen] = useState(false)
   const [cyclesExpanded, setCyclesExpanded] = useState(true)
-  const pathname = usePathname()
   const { workspace, isLoading, switchWorkspace } = useWorkspace()
   const { data: workspaces = [] } = api.workspace.list.useQuery()
 

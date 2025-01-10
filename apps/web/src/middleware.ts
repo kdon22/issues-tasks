@@ -15,34 +15,39 @@ interface CustomToken {
 }
 
 export async function middleware(request: NextRequest) {
+  // Prevent multiple middleware executions
+  if (request.headers.get('x-middleware-cache')) {
+    return NextResponse.next()
+  }
+
   const token = await getToken({ 
     req: request,
     secret: process.env.NEXTAUTH_SECRET 
   }) as CustomToken | null
   
-  console.log('Middleware - Path:', request.nextUrl.pathname)
-  console.log('Middleware - Token:', token)
+  // Only log on initial page load
+  if (!request.headers.get('x-middleware-invoke')) {
+    console.log('Middleware - Initial request:', request.nextUrl.pathname)
+  }
 
   // Allow public file uploads
   if (request.nextUrl.pathname.startsWith('/api/upload')) {
-    console.log('Middleware - Allowing upload')
     return NextResponse.next()
   }
 
   // Require auth
   if (!token && !request.nextUrl.pathname.startsWith('/auth')) {
-    console.log('Middleware - No token, redirecting to login')
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
   // If at root and has workspace, redirect to last workspace
   if (request.nextUrl.pathname === '/workspace/new' && token?.workspace?.url) {
-    console.log('Middleware - Has workspace, redirecting to:', token.workspace.url)
     return NextResponse.redirect(new URL(`/${token.workspace.url}/my-issues`, request.url))
   }
 
-  console.log('Middleware - Continuing to:', request.nextUrl.pathname)
-  return NextResponse.next()
+  const response = NextResponse.next()
+  response.headers.set('x-middleware-cache', '1')
+  return response
 }
 
 export const config = {
@@ -50,4 +55,4 @@ export const config = {
     '/((?!api|_next/static|_next/image|favicon.ico|auth).*)',
     '/api/upload/:path*'
   ],
-} 
+}

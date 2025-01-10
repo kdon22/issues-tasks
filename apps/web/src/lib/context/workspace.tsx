@@ -6,6 +6,8 @@ import type { Workspace } from '@prisma/client'
 interface WorkspaceContextType {
   workspace: Workspace | null
   setWorkspace: (workspace: Workspace | null) => void
+  isLoading: boolean
+  switchWorkspace: (workspace: Workspace) => void
 }
 
 export const WorkspaceContext = createContext<WorkspaceContextType | null>(null)
