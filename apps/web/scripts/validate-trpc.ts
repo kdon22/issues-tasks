@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
-import { appRouter } from '../src/lib/trpc/router'
-import { createContext } from '../src/lib/trpc/context'
+import { appRouter } from '../src/infrastructure/trpc/routers/router'
+import { createContext } from '../src/infrastructure/trpc/core/context'
 import type { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch'
 
 async function validateTrpc() {

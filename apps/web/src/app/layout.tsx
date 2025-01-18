@@ -1,7 +1,20 @@
-import { Inter } from 'next/font/google'
-import '@/app/globals.css'
-import { Providers } from '@/providers'
-import { ThemeProvider } from 'next-themes'
+import '@/infrastructure/styles/globals.css'
+import { type Metadata } from 'next'
+import { Suspense } from 'react'
+import { AppProviders } from '@/infrastructure/providers/AppProviders'
+import { Providers } from './providers'
+import LoadingPage from './loading'
+
+export const metadata: Metadata = {
+  title: 'IssuesTasks',
+  description: 'Project and issue tracking',
+  icons: {
+    icon: '/favicon.ico'
+  }
+}
+
+// Prevent static rendering of root layout to ensure fresh session on each request
+export const dynamic = 'force-dynamic'
 
 export default function RootLayout({
   children,
@@ -9,12 +22,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
         <Providers>
-          <ThemeProvider attribute="class" defaultTheme="light">
-            {children}
-          </ThemeProvider>
+          <AppProviders>
+            <Suspense fallback={<LoadingPage />}>
+              {children}
+            </Suspense>
+          </AppProviders>
         </Providers>
       </body>
     </html>

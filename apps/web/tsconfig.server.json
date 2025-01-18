@@ -6,5 +6,5 @@
     "noEmit": false,
     "jsx": "react"
   },
-  "include": ["src/lib/trpc/**/*"]
+  "include": ["src/infrastructure/trpc/**/*"]
 } 

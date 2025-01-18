@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect } from 'react'
+import { Button } from '@/domains/shared/components/inputs'
 
-export default function Error({
+export default function ErrorPage({
   error,
   reset,
 }: {
@@ -10,19 +11,17 @@ export default function Error({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('App error:', error)
+    // Log error to error reporting service
+    console.error(error)
   }, [error])
 
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
-        <button
-          onClick={() => reset()}
-          className="bg-[#635bff] text-white px-4 py-2 rounded hover:bg-[#0a2540]"
-        >
+        <h2 className="text-2xl font-semibold mb-4">Something went wrong</h2>
+        <Button onClick={reset} variant="secondary">
           Try again
-        </button>
+        </Button>
       </div>
     </div>
   )

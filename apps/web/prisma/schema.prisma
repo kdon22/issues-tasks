@@ -8,104 +8,86 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserStatus {
-  ACTIVE
-  PENDING
-  DISABLED
-}
-
-enum AvatarType {
-  INITIALS
-  ICON
-  EMOJI
-  IMAGE
-}
-
-// Global user preferences
 model UserPreferences {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  defaultHomeView String   @default("my-issues")
-  fontSize        String   @default("default")
-  interfaceTheme  String   @default("system")
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  defaultHomeView  String  @default("my-issues")
+  fontSize         String  @default("default")
+  interfaceTheme   String  @default("system")
   usePointerCursor Boolean @default(false)
   displayFullNames Boolean @default(false)
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId      String
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
 }
 
-// Workspace-specific preferences
 model WorkspaceUserPreferences {
-  id              String    @id @default(cuid())
-  userId          String
-  workspaceId     String
-  defaultHomeView String    @default("active-issues")
-  fontSize        String    @default("default")
-  displayFullNames Boolean  @default(false)
-  interfaceTheme  String    @default("system")
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace       Workspace @relation("WorkspacePreferences", fields: [workspaceId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  userId           String
+  workspaceId      String
+  defaultHomeView  String    @default("active-issues")
+  fontSize         String    @default("default")
+  displayFullNames Boolean   @default(false)
+  interfaceTheme   String    @default("system")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace        Workspace @relation("WorkspacePreferences", fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
   @@map("workspace_user_preferences")
 }
 
 model User {
-  id                   String            @id @default(cuid())
-  email                String            @unique
+  id                   String                     @id @default(cuid())
+  email                String                     @unique
   name                 String?
-  password             String
-  nickname             String?
-  avatarType           AvatarType        @default(INITIALS)
-  avatarIcon           String?
+  status               UserStatus                 @default(ACTIVE)
+  createdAt            DateTime                   @default(now())
   avatarColor          String?
   avatarEmoji          String?
+  avatarIcon           String?
   avatarImageUrl       String?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  avatarType           AvatarType                 @default(INITIALS)
+  displayName          String?
+  notificationSettings Json?                      @default("{}")
+  password             String
+  updatedAt            DateTime                   @updatedAt
+  teams                TeamMember[]
+  sentWorkspaceInvites WorkspaceInvite[]          @relation("invitedBy")
+  workspaces           WorkspaceMember[]
   preferences          UserPreferences?
   workspacePreferences WorkspaceUserPreferences[]
-  workspaces           WorkspaceMember[]
-  teams                TeamMember[]
-  status               UserStatus        @default(ACTIVE)
-  leadingProjects      Project[]         @relation("ProjectLead")
-  projectMemberships   ProjectMember[]
-  assignedIssues       Issue[]
-  sentWorkspaceInvites WorkspaceInvite[] @relation("invitedBy")
 }
 
 model Workspace {
-  id              String            @id @default(cuid())
+  id              String                     @id @default(cuid())
   name            String
-  url             String            @unique
-  avatarType      AvatarType        @default(INITIALS)
-  avatarIcon      String?
+  url             String                     @unique
+  createdAt       DateTime                   @default(now())
   avatarColor     String?
   avatarEmoji     String?
+  avatarIcon      String?
   avatarImageUrl  String?
-  fiscalYearStart String            @default("January")
-  region          String            @default("United States")
+  avatarType      AvatarType                 @default(INITIALS)
+  fiscalYearStart String                     @default("January")
+  region          String                     @default("United States")
+  updatedAt       DateTime                   @updatedAt
+  teams           Team[]
+  invites         WorkspaceInvite[]
   members         WorkspaceMember[]
   userPreferences WorkspaceUserPreferences[] @relation("WorkspacePreferences")
-  teams           Team[]
-  projects        Project[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  invites         WorkspaceInvite[]
 }
 
 model WorkspaceMember {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   userId         String
   workspaceId    String
-  role           String   @default("MEMBER")
-  lastAccessedAt DateTime @default(now())
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  role           String    @default("MEMBER")
+  createdAt      DateTime  @default(now())
+  lastAccessedAt DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
 }
@@ -120,16 +102,12 @@ model Team {
   avatarColor    String?
   avatarEmoji    String?
   avatarImageUrl String?
-  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   workspaceId    String
-  members        TeamMember[]
-  projects       Project[]
-  sprints        Sprint[]
-  milestones     Milestone[]
-  issues         Issue[]
   settings       Json?        @default("{}")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members        TeamMember[]
 
   @@unique([workspaceId, identifier])
   @@index([workspaceId])
@@ -137,186 +115,15 @@ model Team {
 
 model TeamMember {
   id        String   @id @default(cuid())
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   role      TeamRole @default(MEMBER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, teamId])
-}
-
-enum TeamRole {
-  OWNER
-  ADMIN
-  MEMBER
-  GUEST
-}
-
-model Issue {
-  id          String        @id @default(cuid())
-  title       String
-  description String?
-  status      IssueStatus   @default(OPEN)
-  priority    IssuePriority @default(MEDIUM)
-
-  // Relations
-  teamId String
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-
-  projectId   String?
-  project     Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  sprint      Sprint?    @relation(fields: [sprintId], references: [id])
-  sprintId    String?
-  milestone   Milestone? @relation(fields: [milestoneId], references: [id])
-  milestoneId String?
-
-  // Assignee
-  assigneeId String?
-  assignee   User?   @relation(fields: [assigneeId], references: [id])
-
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([teamId])
-  @@index([projectId])
-  @@index([sprintId])
-  @@index([milestoneId])
-  @@index([assigneeId])
-}
-
-enum IssueStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
-  CLOSED
-}
-
-enum IssuePriority {
-  URGENT
-  HIGH
-  MEDIUM
-  LOW
-}
-
-model Project {
-  id             String          @id @default(cuid())
-  name           String
-  identifier     String
-  description    String?
-  avatarType     String          @default("initials")
-  avatarIcon     String?
-  avatarColor    String?
-  avatarImageUrl String?
-  workspaceId    String
-  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  teamId         String
-  team           Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  leadId         String
-  lead           User            @relation("ProjectLead", fields: [leadId], references: [id])
-  members        ProjectMember[]
-  blockedBy      Project[]       @relation("ProjectBlockers")
-  blocking       Project[]       @relation("ProjectBlockers")
-  sprints        Sprint[]
-  milestones     Milestone[]
-  issues         Issue[]
-  settings       Json?           @default("{}")
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-
-  @@unique([workspaceId, identifier])
-  @@index([workspaceId])
-  @@index([teamId])
-}
-
-model Sprint {
-  id          String       @id @default(cuid())
-  name        String
-  identifier  String
-  description String?
-  status      SprintStatus @default(PLANNED)
-  startDate   DateTime
-  endDate     DateTime
-  goal        String? // Sprint goal/objective
-
-  // Avatar fields
-  avatarType     AvatarType @default(INITIALS)
-  avatarIcon     String?
-  avatarColor    String?
-  avatarEmoji    String?
-  avatarImageUrl String?
-
-  // Relations
-  teamId    String
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  issues    Issue[]
-
-  // Metadata
-  settings  Json?    @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([teamId, identifier])
-  @@index([teamId])
-  @@index([projectId])
-}
-
-enum SprintStatus {
-  PLANNED // Not started
-  ACTIVE // Currently running
-  COMPLETED // Finished
-  CANCELLED // Terminated early
-}
-
-model Milestone {
-  id             String     @id @default(cuid())
-  name           String
-  identifier     String
-  description    String?
-  targetDate     DateTime
-  status         String     @default("PLANNED")
-  avatarType     AvatarType @default(INITIALS)
-  avatarIcon     String?
-  avatarColor    String?
-  avatarEmoji    String?
-  avatarImageUrl String?
-
-  // Team relation
-  teamId String
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-
-  // Add Project relation
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-
-  issues    Issue[]
-  settings  Json?    @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([teamId, identifier])
-  @@index([teamId])
-  @@index([projectId])
-}
-
-model ProjectMember {
-  id        String   @id @default(cuid())
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  role      String   @default("MEMBER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, projectId])
-  @@index([projectId])
-  @@index([userId])
 }
 
 model WorkspaceInvite {
@@ -324,15 +131,35 @@ model WorkspaceInvite {
   code        String    @unique
   email       String
   role        String    @default("MEMBER")
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   workspaceId String
   invitedById String
-  invitedBy   User      @relation("invitedBy", fields: [invitedById], references: [id])
   teamIds     String[]  @default([])
   expiresAt   DateTime
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  invitedBy   User      @relation("invitedBy", fields: [invitedById], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
   @@index([invitedById])
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  DISABLED
+}
+
+enum AvatarType {
+  INITIALS
+  ICON
+  EMOJI
+  IMAGE
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
 }

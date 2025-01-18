@@ -1,0 +1,1 @@
+export const createQueryKey = (parts: (string | number)[]) => parts.join(':') 

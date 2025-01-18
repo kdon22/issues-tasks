@@ -1,23 +1,28 @@
 'use client'
 
-import { useWorkspace } from '@/lib/hooks/useWorkspace'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { trpc } from '@/infrastructure/trpc/core/client'
+import { ErrorBoundary } from '@/domains/shared/components/feedback/ErrorBoundary'
+import { LoadingSpinner } from '@/domains/shared/components/feedback/LoadingSpinner'
 
-export default function CatchAllPage() {
-  const router = useRouter()
-  const { workspace, isLoading } = useWorkspace()
+interface PageParams {
+  workspaceUrl: string
+  path: string[]
+}
 
-  useEffect(() => {
-    if (!isLoading && workspace) {
-      // Redirect to my-issues if no specific path
-      router.replace(`/${workspace.url}/my-issues`)
-    }
-  }, [workspace, isLoading, router])
+export default function WorkspacePage({ params }: { params: PageParams }) {
+  const { data: workspace, isLoading } = trpc.workspace.get.useQuery(
+    { id: params.workspaceUrl }
+  )
 
-  if (isLoading) {
-    return <div>Loading...</div>
-  }
+  if (isLoading) return <LoadingSpinner />
+  if (!workspace) return null
 
-  return null
+  return (
+    <ErrorBoundary>
+      <div>
+        <h1>{workspace.name}</h1>
+        <div>{workspace.url}</div>
+      </div>
+    </ErrorBoundary>
+  )
 } 

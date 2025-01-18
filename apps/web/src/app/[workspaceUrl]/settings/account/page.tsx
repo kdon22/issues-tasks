@@ -1,7 +1,9 @@
 'use client'
 
-import { AccountSettings } from '@/components/features/settings/account/AccountSettings'
+import { useParams } from 'next/navigation'
+import { redirect } from 'next/navigation'
 
-export default function AccountSettingsPage() {
-  return <AccountSettings />
+export default function Page() {
+  const params = useParams<{ workspaceUrl: string }>()
+  redirect(`/${params.workspaceUrl}/settings/account/profile`)
 } 

@@ -1,6 +1,11 @@
 import NextAuth from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions } from '@/infrastructure/auth/config'
+
+// Add debug logging
+console.log('Setting up NextAuth handler')
 
 const handler = NextAuth(authOptions)
 
-export { handler as GET, handler as POST } 
+// Explicitly type the exports
+export const GET = handler
+export const POST = handler 

@@ -1,34 +1,30 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { api } from '@/lib/trpc/client'
-import Loading from '@/components/ui/Loading'
+import { useRouter, useParams } from 'next/navigation'
+import { trpc } from '@/infrastructure/trpc/core/client'
+import Loading from '@/domains/shared/components/feedback/Loading'
 
 export default function WorkspacePage() {
   const router = useRouter()
-  const { data: workspace, isLoading: workspaceLoading } = api.workspace.getCurrent.useQuery(
-    { url: window.location.pathname.split('/')[1] || '' },
-    { retry: false }
-  )
-  const { data: preferences, isLoading: preferencesLoading } = api.preferences.get.useQuery(
-    { workspaceId: workspace?.id ?? '' },
-    { 
-      enabled: !!workspace,
-      retry: false,
-    }
+  const params = useParams()
+  const utils = trpc.useContext()
+  
+  const { data: workspace } = trpc.workspace.get.useQuery(
+    { id: params.workspaceUrl as string }
   )
 
-  useEffect(() => {
-    if (workspace) {
-      const defaultView = preferences?.defaultHomeView || 'my-issues'
-      router.push(`/${workspace.url}/${defaultView}`)
-    }
-  }, [workspace, preferences, router])
+  const { data: preferences } = trpc.user.get.useQuery(
+    { id: workspace?.id },
+    { enabled: !!workspace }
+  )
 
-  if (workspaceLoading || preferencesLoading) {
-    return <Loading />
-  }
+  // Redirect to default view
+  // useEffect(() => {
+  //   if (workspace) {
+  //     const defaultView = preferences?.defaultHomeView || 'my-issues'
+  //     router.push(`/${workspace.url}/${defaultView}`)
+  //   }
+  // }, [workspace, preferences, router])
 
-  return null
+  return <Loading />
 } 
