@@ -1,36 +1,281 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Linear Clone - Platinum Standard
 
-## Getting Started
+A world-class Linear clone built with cutting-edge technology for blazing performance and enterprise-grade features.
 
-First, run the development server:
+## 🚀 **Tech Stack - Platinum Standard**
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### **Core Framework**
+- **Next.js 15.3.4** - Latest App Router with Turbopack
+- **React 19** - Concurrent features for smooth UX
+- **TypeScript 5** - Full type safety
+- **Tailwind CSS 4** - Modern utility-first styling
+
+### **Database & Backend**
+- **PostgreSQL 16** - Enterprise-grade relational database
+- **Prisma ORM** - Type-safe database access
+- **Redis 7** - High-performance caching & real-time features
+- **NextAuth.js v5** - Modern authentication
+
+### **UI & Components**
+- **Radix UI** - Headless, accessible components
+- **shadcn/ui** - Beautiful, customizable components
+- **Lucide Icons** - Consistent, beautiful icons
+- **Framer Motion** - Smooth animations
+- **Tailwind Merge** - Optimized CSS class management
+
+### **State Management**
+- **Zustand** - Lightweight client state
+- **TanStack Query v5** - Powerful server state management
+- **React Hook Form** - Performant forms
+- **Zod** - Runtime type validation
+
+### **Real-time & Collaboration**
+- **Socket.io** - Real-time updates
+- **TipTap** - Rich text editing with collaboration
+- **WebSockets** - Live cursors and presence
+
+### **Search & Performance**
+- **Typesense** - Lightning-fast search engine
+- **Fuse.js** - Client-side fuzzy search
+- **React Virtual** - Virtualized lists for performance
+- **React Window** - Efficient rendering
+
+### **Offline & Storage**
+- **Dexie.js** - IndexedDB wrapper for offline data
+- **Service Worker** - Offline-first capabilities
+- **MinIO** - S3-compatible object storage
+
+### **Development & Testing**
+- **Storybook** - Component development
+- **Jest & Testing Library** - Unit & integration testing
+- **Vitest** - Fast unit testing
+- **ESLint & Prettier** - Code quality
+- **Husky** - Git hooks
+
+### **Monitoring & Analytics**
+- **Sentry** - Error tracking & performance monitoring
+- **Vercel Analytics** - Web analytics
+- **Bundle Analyzer** - Build optimization
+
+## 🏗️ **Architecture**
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Next.js App   │    │   PostgreSQL    │    │     Redis       │
+│   (Frontend)    │◄───┤   (Database)    │    │   (Caching)     │
+│                 │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│    Typesense    │    │      MinIO      │    │   Socket.io     │
+│    (Search)     │    │   (Storage)     │    │  (Real-time)    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 **Quick Start**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Prerequisites
+- Node.js 18+ 
+- Docker & Docker Compose
+- Git
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Clone & Setup
+```bash
+git clone <your-repo>
+cd linear-clone
+cp env.example .env
+```
 
-## Learn More
+### 2. Start Services
+```bash
+# Start all services (PostgreSQL, Redis, MinIO, Typesense, MailHog)
+npm run docker:up
 
-To learn more about Next.js, take a look at the following resources:
+# Install dependencies
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Generate Prisma client
+npm run db:generate
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Run database migrations
+npm run db:migrate
 
-## Deploy on Vercel
+# Seed the database
+npm run db:seed
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 3. Development
+```bash
+# Start development server with Turbopack
+npm run dev
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Open additional terminals for:
+npm run db:studio      # Prisma Studio
+npm run storybook      # Component development
+```
+
+## 📖 **Development Workflow**
+
+### **Database Operations**
+```bash
+npm run db:studio      # Prisma Studio GUI
+npm run db:generate    # Generate Prisma client
+npm run db:migrate     # Create & run migrations
+npm run db:push        # Push schema changes
+npm run db:seed        # Seed database
+npm run db:reset       # Reset database
+```
+
+### **Testing**
+```bash
+npm run test           # Run tests
+npm run test:watch     # Watch mode
+npm run test:coverage  # Coverage report
+npm run test:ui        # Vitest UI
+```
+
+### **Code Quality**
+```bash
+npm run lint           # Check linting
+npm run lint:fix       # Fix linting issues
+npm run format         # Format code
+npm run type-check     # TypeScript check
+```
+
+### **Build & Analysis**
+```bash
+npm run build          # Production build
+npm run analyze        # Bundle analysis
+npm run start          # Production server
+```
+
+## 🔧 **Services**
+
+All services run via Docker Compose:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **App** | http://localhost:3000 | Next.js application |
+| **PostgreSQL** | localhost:5432 | Primary database |
+| **Redis** | localhost:6379 | Caching & sessions |
+| **MinIO** | http://localhost:9001 | Object storage admin |
+| **Typesense** | http://localhost:8108 | Search engine |
+| **MailHog** | http://localhost:8025 | Email testing |
+| **Prisma Studio** | http://localhost:5555 | Database GUI |
+| **Storybook** | http://localhost:6006 | Component library |
+
+## 🎯 **Linear Features**
+
+### **Core Features**
+- ✅ **Issues Management** - Create, edit, assign, track
+- ✅ **Projects** - Organize work into projects
+- ✅ **Teams** - Multi-team workspace support
+- ✅ **States** - Customizable workflow states
+- ✅ **Labels** - Flexible tagging system
+- ✅ **Priorities** - Issue priority management
+- ✅ **Assignments** - User assignment system
+
+### **Advanced Features**
+- 🔄 **Real-time Collaboration** - Live updates & cursors
+- 🔍 **Lightning Search** - Instant fuzzy search
+- ⌨️ **Keyboard Shortcuts** - Power user workflow
+- 📱 **Mobile Responsive** - Perfect mobile experience
+- 🌙 **Dark Mode** - System preference support
+- 📊 **Activity Feeds** - Complete audit trail
+- 💬 **Comments** - Threaded discussions
+- 📎 **Attachments** - File upload support
+- 🔔 **Notifications** - Smart notification system
+- 📈 **Analytics** - Usage insights
+
+### **Performance Features**
+- ⚡ **Offline Support** - Works without internet
+- 🚀 **Virtualization** - Handles thousands of items
+- 🎯 **Optimistic Updates** - Instant UI feedback
+- 💾 **Smart Caching** - Intelligent data caching
+- 🌐 **CDN Ready** - Global content delivery
+
+## 🔐 **Security**
+
+- **Authentication** - NextAuth.js with multiple providers
+- **Authorization** - Role-based access control
+- **Data Validation** - Zod schemas everywhere
+- **SQL Injection** - Prisma ORM protection
+- **XSS Protection** - Content Security Policy
+- **CSRF Protection** - Built-in Next.js protection
+
+## 🚀 **Deployment**
+
+### **Vercel (Recommended)**
+```bash
+# Deploy to Vercel
+npx vercel --prod
+
+# Environment variables needed:
+# - DATABASE_URL (PostgreSQL)
+# - NEXTAUTH_SECRET
+# - REDIS_URL
+# - TYPESENSE_API_KEY
+# - MINIO_* (S3 credentials)
+```
+
+### **Docker Production**
+```bash
+# Build production image
+docker build -t linear-clone .
+
+# Run with docker-compose
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+## 🎨 **Design System**
+
+Built with a comprehensive design system:
+- **Typography** - Consistent text hierarchy
+- **Colors** - Dark/light mode support
+- **Spacing** - Harmonious spacing scale
+- **Components** - Reusable UI components
+- **Icons** - Lucide icon library
+- **Animations** - Smooth micro-interactions
+
+## 🔧 **Configuration**
+
+### **Environment Variables**
+See `env.example` for all configuration options.
+
+### **Prisma Schema**
+Comprehensive database schema with:
+- Users, Teams, Workspaces
+- Issues, Projects, Labels, States
+- Comments, Attachments, Activities
+- Notifications, Preferences
+
+### **TypeScript Configuration**
+Strict TypeScript with path mapping and optimizations.
+
+### **Tailwind Configuration**
+Custom design system with plugins and optimizations.
+
+## 📚 **Documentation**
+
+- **Components** - Storybook at http://localhost:6006
+- **API** - Auto-generated from Prisma schema
+- **Database** - Prisma Studio at http://localhost:5555
+- **Architecture** - This README and inline docs
+
+## 🤝 **Contributing**
+
+1. Fork the repository
+2. Create a feature branch
+3. Write tests for new features
+4. Run the full test suite
+5. Submit a pull request
+
+## 📄 **License**
+
+MIT License - see LICENSE file for details.
+
+---
+
+**Built with ❤️ for the modern web**

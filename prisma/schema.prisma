@@ -1,0 +1,700 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserPreferences {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  defaultHomeView  String  @default("my-issues")
+  fontSize         String  @default("default")
+  interfaceTheme   String  @default("system")
+  usePointerCursor Boolean @default(false)
+  displayFullNames Boolean @default(false)
+  workspaceId      String
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model WorkspaceUserPreferences {
+  id               String    @id @default(cuid())
+  userId           String
+  workspaceId      String
+  defaultHomeView  String    @default("active-issues")
+  fontSize         String    @default("default")
+  displayFullNames Boolean   @default(false)
+  interfaceTheme   String    @default("system")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace        Workspace @relation("WorkspacePreferences", fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@map("workspace_user_preferences")
+}
+
+model User {
+  id                   String                     @id @default(cuid())
+  email                String                     @unique
+  name                 String?
+  status               UserStatus                 @default(ACTIVE)
+  createdAt            DateTime                   @default(now())
+  avatarColor          String?
+  avatarEmoji          String?
+  avatarIcon           String?
+  avatarImageUrl       String?
+  avatarType           AvatarType                 @default(INITIALS)
+  displayName          String?
+  notificationSettings Json?                      @default("{}")
+  password             String
+  updatedAt            DateTime                   @updatedAt
+  teams                TeamMember[]
+  sentWorkspaceInvites WorkspaceInvite[]          @relation("invitedBy")
+  workspaces           WorkspaceMember[]
+  preferences          UserPreferences?
+  workspacePreferences WorkspaceUserPreferences[]
+  
+  // Project and Issue relations
+  projectsLed          Project[]                  @relation("ProjectLead")
+  createdIssues        Issue[]                    @relation("IssueCreator")
+  assignedIssues       Issue[]                    @relation("IssueAssignee")
+  comments             Comment[]
+  commentReactions     CommentReaction[]
+  attachments          Attachment[]
+  activities           Activity[]
+  notifications        Notification[]
+  createdCustomFields  CustomField[]          @relation("CustomFieldCreator")
+  
+  // Central Auth Service relations
+  instanceSessions     UserInstanceSession[]
+  instancePermissions  UserInstancePermission[]
+}
+
+model Workspace {
+  id              String                     @id @default(cuid())
+  name            String
+  url             String                     @unique
+  createdAt       DateTime                   @default(now())
+  avatarColor     String?
+  avatarEmoji     String?
+  avatarIcon      String?
+  avatarImageUrl  String?
+  avatarType      AvatarType                 @default(INITIALS)
+  fiscalYearStart String                     @default("January")
+  region          String                     @default("United States")
+  updatedAt       DateTime                   @updatedAt
+  teams           Team[]
+  invites         WorkspaceInvite[]
+  members         WorkspaceMember[]
+  userPreferences WorkspaceUserPreferences[] @relation("WorkspacePreferences")
+  
+  // New relations
+  projects        Project[]
+  statusFlows     StatusFlow[]
+  labels          Label[]
+  issues          Issue[]
+  issueTypes      IssueType[]
+  activities      Activity[]
+  notifications   Notification[]
+  customFields    CustomField[]
+  fieldConfigurations FieldConfiguration[]
+}
+
+model WorkspaceMember {
+  id             String    @id @default(cuid())
+  userId         String
+  workspaceId    String
+  role           String    @default("MEMBER")
+  createdAt      DateTime  @default(now())
+  lastAccessedAt DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model Team {
+  id             String       @id @default(cuid())
+  name           String
+  identifier     String
+  description    String?
+  avatarType     AvatarType   @default(INITIALS)
+  avatarIcon     String?
+  avatarColor    String?
+  avatarEmoji    String?
+  avatarImageUrl String?
+  workspaceId    String
+  settings       Json?        @default("{}")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members        TeamMember[]
+  
+  // New relations
+  projects       Project[]
+  projectTeams   ProjectTeam[] @relation("ProjectTeams")
+  labels         Label[]
+  issues         Issue[]
+  customFields   CustomField[]
+  fieldConfigurations FieldConfiguration[]
+
+  @@unique([workspaceId, identifier])
+  @@index([workspaceId])
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      TeamRole @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+}
+
+model WorkspaceInvite {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  email       String
+  role        String    @default("MEMBER")
+  workspaceId String
+  invitedById String
+  teamIds     String[]  @default([])
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  invitedBy   User      @relation("invitedBy", fields: [invitedById], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([invitedById])
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  DISABLED
+}
+
+enum AvatarType {
+  INITIALS
+  ICON
+  EMOJI
+  IMAGE
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+enum ProjectTeamRole {
+  LEAD
+  MEMBER
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  name          String
+  summary       String?
+  description   String?
+  identifier    String   // e.g., "WEB", "API"
+  color         String?
+  icon          String?
+  status        ProjectStatus @default(ACTIVE)
+  startDate     DateTime?
+  targetDate    DateTime?
+  completedAt   DateTime?
+  leadUserId    String?
+  teamId        String   // Lead team ID (for backward compatibility)
+  workspaceId   String
+  settings      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  lead          User?     @relation("ProjectLead", fields: [leadUserId], references: [id])
+  team          Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  teams         ProjectTeam[] // Multi-team support
+  issues        Issue[]
+  
+  @@unique([teamId, identifier])
+  @@index([teamId])
+  @@index([workspaceId])
+  @@map("projects")
+}
+
+model ProjectTeam {
+  id        String          @id @default(cuid())
+  projectId String
+  teamId    String
+  role      ProjectTeamRole @default(MEMBER)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  team      Team    @relation("ProjectTeams", fields: [teamId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, teamId])
+  @@index([projectId])
+  @@index([teamId])
+  @@map("project_teams")
+}
+
+model StatusFlow {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  color       String    @default("#6B7280")
+  icon        String?
+  position    Float     @default(0)
+  isDefault   Boolean   @default(false)
+  workspaceId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  states      State[]
+  issueTypes  IssueType[]
+  
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("status_flows")
+}
+
+model State {
+  id           String     @id @default(cuid())
+  name         String
+  description  String?
+  color        String
+  type         StateType
+  position     Float      @default(0)
+  statusFlowId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  statusFlow   StatusFlow @relation(fields: [statusFlowId], references: [id], onDelete: Cascade)
+  issues       Issue[]
+  
+  @@unique([statusFlowId, name])
+  @@index([statusFlowId])
+  @@map("states")
+}
+
+model Label {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String
+  teamId      String?
+  workspaceId String
+  parentId    String?  // For label groups
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  team        Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent      Label?    @relation("LabelHierarchy", fields: [parentId], references: [id])
+  children    Label[]   @relation("LabelHierarchy")
+  issues      IssueLabel[]
+  
+  @@unique([workspaceId, name])
+  @@index([teamId])
+  @@index([workspaceId])
+  @@index([parentId])
+  @@map("labels")
+}
+
+model IssueType {
+  id           String     @id @default(cuid())
+  name         String
+  description  String?
+  icon         String?    // Icon name (e.g., "bug", "feature")
+  color        String
+  workspaceId  String
+  statusFlowId String?    // Reference to status flow
+  isDefault    Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  workspace    Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  statusFlow   StatusFlow? @relation(fields: [statusFlowId], references: [id], onDelete: SetNull)
+  issues       Issue[]
+  
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@index([statusFlowId])
+  @@map("issue_types")
+}
+
+model Issue {
+  id            String     @id @default(cuid())
+  title         String
+  description   String?
+  identifier    String     // e.g., "WEB-123"
+  number        Int        // Sequential number per team
+  priority      Priority   @default(MEDIUM)
+  estimate      Float?     // Story points or time estimate
+  dueDate       DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  canceledAt    DateTime?
+  
+  // Relations
+  creatorId     String
+  assigneeId    String?
+  teamId        String
+  projectId     String?
+  stateId       String
+  issueTypeId   String
+  parentId      String?    // For sub-issues
+  workspaceId   String
+  
+  // Metadata
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  // Relations
+  creator       User       @relation("IssueCreator", fields: [creatorId], references: [id])
+  assignee      User?      @relation("IssueAssignee", fields: [assigneeId], references: [id])
+  team          Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project       Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  state         State      @relation(fields: [stateId], references: [id])
+  issueType     IssueType  @relation(fields: [issueTypeId], references: [id])
+  parent        Issue?     @relation("IssueHierarchy", fields: [parentId], references: [id])
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  // Child relations
+  children      Issue[]    @relation("IssueHierarchy")
+  labels        IssueLabel[]
+  comments      Comment[]
+  attachments   Attachment[]
+  activities    Activity[]
+  notifications Notification[]
+  customFieldValues CustomFieldValue[]
+  
+  @@unique([teamId, number])
+  @@index([teamId])
+  @@index([assigneeId])
+  @@index([creatorId])
+  @@index([stateId])
+  @@index([issueTypeId])
+  @@index([projectId])
+  @@index([workspaceId])
+  @@map("issues")
+}
+
+model IssueLabel {
+  id      String @id @default(cuid())
+  issueId String
+  labelId String
+  
+  issue   Issue  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  
+  @@unique([issueId, labelId])
+  @@map("issue_labels")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  issueId   String
+  parentId  String?  // For nested comments
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  reactions CommentReaction[]
+  
+  @@index([issueId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model CommentReaction {
+  id        String   @id @default(cuid())
+  emoji     String
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, commentId, emoji])
+  @@index([commentId])
+  @@index([userId])
+  @@map("comment_reactions")
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  filename  String
+  url       String
+  mimetype  String
+  size      Int
+  userId    String
+  issueId   String
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  
+  @@index([issueId])
+  @@index([userId])
+  @@map("attachments")
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  type        ActivityType
+  data        Json         // Flexible data for different activity types
+  userId      String
+  issueId     String?
+  workspaceId String
+  createdAt   DateTime     @default(now())
+  
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issue       Issue?       @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  @@index([issueId])
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([createdAt])
+  @@map("activities")
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  title       String
+  message     String?
+  data        Json?            // Additional data
+  userId      String
+  issueId     String?
+  workspaceId String
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+  
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issue       Issue?           @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([issueId])
+  @@index([workspaceId])
+  @@index([readAt])
+  @@map("notifications")
+}
+
+model CustomField {
+  id            String          @id @default(cuid())
+  name          String
+  description   String?
+  type          CustomFieldType
+  options       Json?           // For select/multi-select fields
+  required      Boolean         @default(false)
+  position      Int             @default(0)
+  teamId        String?         // Team-specific field
+  workspaceId   String          // Workspace-wide field
+  settings      Json?           @default("{}")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  createdById   String
+  
+  team          Team?           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy     User            @relation("CustomFieldCreator", fields: [createdById], references: [id])
+  values        CustomFieldValue[]
+  
+  @@unique([workspaceId, name])
+  @@index([teamId])
+  @@index([workspaceId])
+  @@index([position])
+  @@map("custom_fields")
+}
+
+model CustomFieldValue {
+  id            String      @id @default(cuid())
+  customFieldId String
+  issueId       String
+  value         Json        // Flexible value storage
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  customField   CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+  issue         Issue       @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  
+  @@unique([customFieldId, issueId])
+  @@index([customFieldId])
+  @@index([issueId])
+  @@map("custom_field_values")
+}
+
+model FieldConfiguration {
+  id              String   @id @default(cuid())
+  teamId          String?  // Team-specific configuration
+  workspaceId     String   // Workspace-wide configuration
+  fieldOrder      Json     @default("[]") // Array of field IDs in order
+  fieldVisibility Json     @default("{}") // Object of field visibility settings
+  sectionOrder    Json     @default("[]") // Array of section names in order
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  team            Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, workspaceId])
+  @@index([teamId])
+  @@index([workspaceId])
+  @@map("field_configurations")
+}
+
+enum CustomFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DATE
+  DATETIME
+  BOOLEAN
+  SELECT
+  MULTI_SELECT
+  USER
+  MULTI_USER
+  URL
+  EMAIL
+  PHONE
+  CURRENCY
+  PERCENT
+  RATING
+  COLOR
+  FILE
+  RICH_TEXT
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELED
+}
+
+enum StateType {
+  BACKLOG
+  UNSTARTED
+  STARTED
+  COMPLETED
+  CANCELED
+}
+
+enum Priority {
+  NO_PRIORITY
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityType {
+  ISSUE_CREATED
+  ISSUE_UPDATED
+  ISSUE_ASSIGNED
+  ISSUE_UNASSIGNED
+  ISSUE_STATE_CHANGED
+  ISSUE_PRIORITY_CHANGED
+  ISSUE_LABELED
+  ISSUE_UNLABELED
+  ISSUE_COMMENTED
+  ISSUE_ARCHIVED
+  ISSUE_UNARCHIVED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  TEAM_MEMBER_ADDED
+  TEAM_MEMBER_REMOVED
+}
+
+enum NotificationType {
+  ISSUE_ASSIGNED
+  ISSUE_MENTIONED
+  ISSUE_COMMENTED
+  ISSUE_STATE_CHANGED
+  ISSUE_DUE_SOON
+  PROJECT_UPDATED
+  TEAM_INVITATION
+}
+
+// Central Auth Service Models
+model Instance {
+  id              String   @id @default(cuid())
+  name            String   // "Client A Company"
+  slug            String   @unique // "client-a"
+  domain          String   @unique // "client-a.yourdomain.com"
+  status          InstanceStatus @default(ACTIVE)
+  config          Json?    @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  userSessions    UserInstanceSession[]
+  userPermissions UserInstancePermission[]
+  
+  @@map("instances")
+}
+
+model UserInstanceSession {
+  id          String   @id @default(cuid())
+  userId      String
+  instanceId  String
+  lastAccessed DateTime @default(now())
+  isActive    Boolean  @default(true)
+  sessionData Json?    @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instance    Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, instanceId])
+  @@index([userId])
+  @@index([instanceId])
+  @@map("user_instance_sessions")
+}
+
+model UserInstancePermission {
+  id          String   @id @default(cuid())
+  userId      String
+  instanceId  String
+  permissions Json     @default("{}")
+  role        String   @default("MEMBER")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instance    Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, instanceId])
+  @@index([userId])
+  @@index([instanceId])
+  @@map("user_instance_permissions")
+}
+
+enum InstanceStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
