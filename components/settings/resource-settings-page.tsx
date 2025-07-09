@@ -30,6 +30,7 @@ import { ColorPicker } from '@/components/ui/color-picker';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, Edit2, MoreHorizontal, Search, Palette, ChevronDown, ChevronRight, Mail, UserX, RefreshCw, Shield } from 'lucide-react';
 import { getIconComponent } from '@/components/ui/icon-picker';
+import { IconField } from '@/components/settings/fields/icon-field';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -39,17 +40,51 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
+import { 
+  memberConfig, 
+  teamConfig, 
+  labelConfig, 
+  projectConfig, 
+  issueTypeConfig, 
+  fieldSetConfig, 
+  statusFlowConfig, 
+  issueConfig, 
+  commentConfig 
+} from './resource-configs';
 
 // BaseResource now includes index signature for additional properties
 
-// Resource configuration
+// Add this type above ResourceConfig
+type DisplayField = string | { key: string; label?: string; render?: React.ComponentType<any>; clickable?: boolean; };
+
+// Helper function to get predefined resource configs
+function getPredefinedResourceConfig(actionPrefix: string): ResourceConfig | null {
+  const configMap: Record<string, any> = {
+    member: memberConfig,
+    team: teamConfig,
+    label: labelConfig,
+    project: projectConfig,
+    issueType: issueTypeConfig,
+    fieldSet: fieldSetConfig,
+    statusFlow: statusFlowConfig,
+    issue: issueConfig,
+    comment: commentConfig
+  };
+  
+  return configMap[actionPrefix] || null;
+}
+
+// Update ResourceConfig interface
 interface ResourceConfig {
   name: string;
   actionPrefix: string; // e.g., 'team', 'project', 'label'
-  displayFields: string[];
+  displayFields: DisplayField[];
   searchFields: string[];
   createFields: { key: string; label: string; type: string; required?: boolean; options?: { actionPrefix?: string } }[];
   editFields?: { key: string; label: string; type: string; required?: boolean; options?: { actionPrefix?: string } }[];
+  validationSchema?: any;
+  customEditor?: React.ComponentType<any>; // <-- Add this line
+  columnWidths?: Record<string, number | string>; // Optional per-field column width
 }
 
 // Utility to generate common resource configurations
@@ -57,6 +92,13 @@ export function generateResourceConfig(
   actionPrefix: string,
   overrides: Partial<ResourceConfig> = {}
 ): ResourceConfig {
+  // First check if we have a predefined config
+  const predefinedConfig = getPredefinedResourceConfig(actionPrefix);
+  if (predefinedConfig) {
+    return { ...predefinedConfig, ...overrides };
+  }
+  
+  // Fallback to generated config
   const name = actionPrefix.charAt(0).toUpperCase() + actionPrefix.slice(1);
   
   const baseConfig: ResourceConfig = {
@@ -69,65 +111,7 @@ export function generateResourceConfig(
     ]
   };
 
-  // Add common fields based on action prefix
-  if (['project', 'label', 'state'].includes(actionPrefix)) {
-    baseConfig.displayFields = ['icon', 'name', 'description', 'createdAt'];
-    baseConfig.searchFields = ['name', 'description'];
-    baseConfig.createFields = [
-      { key: 'icon', label: 'Icon', type: 'icon' },
-      { key: 'name', label: 'Name', type: 'text', required: true },
-      { key: 'description', label: 'Description', type: 'textarea' },
-      { key: 'color', label: 'Color', type: 'color' }
-    ];
-  }
-
-  // Team-specific fields (uses avatar fields)
-  if (actionPrefix === 'team') {
-    baseConfig.displayFields = ['avatarIcon', 'name', 'identifier', 'timezone', 'isPrivate', 'createdAt'];
-    baseConfig.searchFields = ['name', 'identifier', 'description'];
-    baseConfig.createFields = [
-      { key: 'avatarIcon', label: 'Icon', type: 'icon' },
-      { key: 'name', label: 'Name', type: 'text', required: true },
-      { key: 'identifier', label: 'Identifier', type: 'text', required: true },
-      { key: 'description', label: 'Description', type: 'textarea' },
-      { key: 'timezone', label: 'Time Zone', type: 'timezone' },
-      { key: 'isPrivate', label: 'Private Team', type: 'checkbox' }
-    ];
-  }
-
-  // Issue Type-specific fields (NO color field)
-  if (actionPrefix === 'issueType') {
-    baseConfig.displayFields = ['icon', 'name', 'description', 'statusFlowId', 'fieldSetId', 'createdAt'];
-    baseConfig.searchFields = ['name', 'description'];
-    baseConfig.createFields = [
-      { key: 'icon', label: 'Icon', type: 'icon' },
-      { key: 'name', label: 'Name', type: 'text', required: true },
-      { key: 'description', label: 'Description', type: 'textarea' },
-      { key: 'statusFlowId', label: 'Status Flow', type: 'select', options: { actionPrefix: 'statusFlow' } },
-      { key: 'fieldSetId', label: 'Field Set', type: 'select', options: { actionPrefix: 'fieldSet' } }
-    ];
-  }
-
-  // Project-specific fields
-  if (actionPrefix === 'project') {
-    baseConfig.createFields.push(
-      { key: 'statusFlowId', label: 'Status Flow', type: 'select', options: { actionPrefix: 'statusFlow' } },
-      { key: 'fieldSetId', label: 'Field Set', type: 'select', options: { actionPrefix: 'fieldSet' } }
-    );
-  }
-
-  // Member-specific fields
-  if (actionPrefix === 'member') {
-    baseConfig.displayFields = ['avatarIcon', 'email', 'name', 'lastName', 'displayName', 'teams', 'status'];
-    baseConfig.searchFields = ['name', 'lastName', 'email', 'displayName'];
-    baseConfig.createFields = [
-      { key: 'name', label: 'First Name', type: 'text', required: true },
-      { key: 'lastName', label: 'Last Name', type: 'text', required: true },
-      { key: 'displayName', label: 'Display Name', type: 'text' },
-      { key: 'email', label: 'Email', type: 'email', required: true },
-      { key: 'role', label: 'Role', type: 'select', required: true }
-    ];
-  }
+  // All resource-specific logic has been moved to resource-configs/
 
   return { ...baseConfig, ...overrides };
 }
@@ -257,6 +241,9 @@ export function ResourceSettingsPage({ config, title, description, onEdit }: Res
         initialData[field.key] = Boolean(item?.[field.key]);
       } else if (field.type === 'select' && !field.required && item?.[field.key] === null) {
         initialData[field.key] = '__none__';
+      } else if (field.key === 'status' && config.actionPrefix === 'project' && !item) {
+        // Set default status for new projects
+        initialData[field.key] = 'ACTIVE';
       } else {
         initialData[field.key] = item?.[field.key] || '';
       }
@@ -401,31 +388,10 @@ export function ResourceSettingsPage({ config, title, description, onEdit }: Res
         );
       case 'icon':
         return (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-10 h-10 p-0 flex items-center justify-center"
-                type="button"
-              >
-                {value ? (
-                  (() => {
-                    const IconComponent = getIconComponent(value);
-                    return <IconComponent className="h-4 w-4 text-blue-600" />;
-                  })()
-                ) : (
-                  <div className="w-4 h-4 border-2 border-dashed border-muted-foreground rounded" />
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <IconPicker
-                selectedIcon={value}
-                onIconSelect={(icon) => setFormData(prev => ({ ...prev, [field.key]: icon }))}
-                className="border-0"
-              />
-            </PopoverContent>
-          </Popover>
+          <IconField
+            value={value}
+            onChange={(newValue: string) => setFormData(prev => ({ ...prev, [field.key]: newValue }))}
+          />
         );
       case 'color':
         const colorVal = value || '#6B7280';
@@ -446,7 +412,7 @@ export function ResourceSettingsPage({ config, title, description, onEdit }: Res
       case 'select':
         const options = field.options?.actionPrefix ? getDropdownOptions(field.options.actionPrefix) : [];
         
-        // Special handling for role field in member config
+        // Generic enum field handling - resource-configs should define the enum values
         if (field.key === 'role' && config.actionPrefix === 'member') {
           const roleOptions = [
             { id: 'OWNER', name: 'Owner' },
@@ -465,6 +431,33 @@ export function ResourceSettingsPage({ config, title, description, onEdit }: Res
               </SelectTrigger>
               <SelectContent>
                 {roleOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        }
+
+        if (field.key === 'status' && config.actionPrefix === 'project') {
+          const statusOptions = [
+            { id: 'ACTIVE', name: 'Active' },
+            { id: 'PAUSED', name: 'Paused' },
+            { id: 'COMPLETED', name: 'Completed' },
+            { id: 'CANCELED', name: 'Canceled' }
+          ];
+          
+          return (
+            <Select
+              value={value}
+              onValueChange={(val) => setFormData(prev => ({ ...prev, [field.key]: val }))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={`Select ${field.label}...`} />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((option) => (
                   <SelectItem key={option.id} value={option.id}>
                     {option.name}
                   </SelectItem>
@@ -495,6 +488,20 @@ export function ResourceSettingsPage({ config, title, description, onEdit }: Res
               ))}
             </SelectContent>
           </Select>
+        );
+
+      case 'checkbox':
+        const isChecked = Boolean(formData[field.key]);
+        return (
+          <div className="flex items-center space-x-3">
+            <Switch
+              checked={isChecked}
+              onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, [field.key]: checked }))}
+            />
+            <label className="text-sm font-medium leading-none">
+              {field.label}
+            </label>
+          </div>
         );
       case 'timezone':
         const commonTimezones = [
@@ -528,19 +535,6 @@ export function ResourceSettingsPage({ config, title, description, onEdit }: Res
             </SelectContent>
           </Select>
         );
-      case 'checkbox':
-        const isChecked = Boolean(formData[field.key]);
-        return (
-          <div className="flex items-center space-x-3">
-            <Switch
-              checked={isChecked}
-              onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, [field.key]: checked }))}
-            />
-            <label className="text-sm font-medium leading-none">
-              {field.label}
-            </label>
-          </div>
-        );
       default:
         return (
           <Input
@@ -563,7 +557,7 @@ export function ResourceSettingsPage({ config, title, description, onEdit }: Res
     const statusFlowField = fields.find(f => f.key === 'statusFlowId');
     const fieldSetField = fields.find(f => f.key === 'fieldSetId');
     const otherFields = fields.filter(f => 
-      !['icon', 'avatarIcon', 'name', 'identifier', 'description', 'statusFlowId', 'fieldSetId'].includes(f.key) &&
+              !['icon', 'name', 'identifier', 'description', 'statusFlowId', 'fieldSetId'].includes(f.key) &&
       f.type !== 'icon'
     );
 
@@ -611,137 +605,146 @@ export function ResourceSettingsPage({ config, title, description, onEdit }: Res
 
       {/* Create/Edit Form */}
       {showCreateForm && (
-        <div className="bg-card rounded-lg border p-6 mb-6">
-          <h3 className="text-lg font-medium mb-4">
-            {editingItem ? `Edit ${config.name}` : `Create ${config.name}`}
-          </h3>
-          
-          <div className="space-y-4">
-            {/* Row 1: Icon + Name + Identifier */}
-            <div className="flex items-start gap-4">
-              {fieldGroups.iconField && (
-                <div className="flex-shrink-0">
-                  <label className="text-sm font-medium block mb-2">
-                    {fieldGroups.iconField.label}
-                    {fieldGroups.iconField.required && <span className="text-red-500 ml-1">*</span>}
-                  </label>
-                  {renderFormField(fieldGroups.iconField)}
-                </div>
-              )}
-              {fieldGroups.nameField && (
-                <div className="flex-1">
-                  <label className="text-sm font-medium block mb-2">
-                    {fieldGroups.nameField.label}
-                    {fieldGroups.nameField.required && <span className="text-red-500 ml-1">*</span>}
-                  </label>
-                  <Input
-                    value={(formData[fieldGroups.nameField?.key || 'name'] as string) || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const nameKey = fieldGroups.nameField?.key || 'name';
-                      setFormData(prev => {
-                        const newData = { ...prev, [nameKey]: value };
-                        
-                        // Auto-populate identifier with first 3 characters (only if identifier exists and is empty or auto-generated)
-                        if (fieldGroups.identifierField && (!prev[fieldGroups.identifierField.key] || prev[fieldGroups.identifierField.key].length <= 3)) {
-                          newData[fieldGroups.identifierField.key] = value.slice(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
-                        }
-                        
-                        return newData;
-                      });
-                    }}
-                    placeholder={fieldGroups.nameField?.label || 'Name'}
-                  />
-                </div>
-              )}
-              {fieldGroups.identifierField && (
-                <div className="w-32">
-                  <label className="text-sm font-medium block mb-2">
-                    {fieldGroups.identifierField.label}
-                    {fieldGroups.identifierField.required && <span className="text-red-500 ml-1">*</span>}
-                  </label>
-                  <Input
-                    value={(formData[fieldGroups.identifierField?.key || 'identifier'] as string) || ''}
-                    onChange={(e) => {
-                      const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                      const identifierKey = fieldGroups.identifierField?.key || 'identifier';
-                      setFormData(prev => ({ ...prev, [identifierKey]: value }));
-                    }}
-                    placeholder={fieldGroups.identifierField?.label || 'Identifier'}
-                    className="font-mono"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Row 2: Description (full width) */}
-            {fieldGroups.descriptionField && (
-              <div className="w-full">
-                <label className="text-sm font-medium block mb-2">
-                  {fieldGroups.descriptionField.label}
-                  {fieldGroups.descriptionField.required && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                {renderFormField(fieldGroups.descriptionField)}
-              </div>
-            )}
-
-            {/* Row 3: Status Flow + Field Set */}
-            <div className="grid grid-cols-2 gap-4">
-              {fieldGroups.statusFlowField && (
-                <div>
-                  <label className="text-sm font-medium block mb-2">
-                    {fieldGroups.statusFlowField.label}
-                    {fieldGroups.statusFlowField.required && <span className="text-red-500 ml-1">*</span>}
-                  </label>
-                  {renderFormField({
-                    ...fieldGroups.statusFlowField,
-                    options: { actionPrefix: 'statusFlow' }
-                  })}
-                </div>
-              )}
-              {fieldGroups.fieldSetField && (
-                <div>
-                  <label className="text-sm font-medium block mb-2">
-                    {fieldGroups.fieldSetField.label}
-                    {fieldGroups.fieldSetField.required && <span className="text-red-500 ml-1">*</span>}
-                  </label>
-                  {renderFormField({
-                    ...fieldGroups.fieldSetField,
-                    options: { actionPrefix: 'fieldSet' }
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Other fields */}
-            {fieldGroups.otherFields.length > 0 && (
-              <div className="grid gap-4 md:grid-cols-2">
-                {fieldGroups.otherFields.map(field => (
-                  <div key={field.key} className="space-y-2">
-                    <label className="text-sm font-medium">
-                      {field.label}
-                      {field.required && <span className="text-red-500 ml-1">*</span>}
+        config.customEditor ? (
+          <config.customEditor
+            resource={editingItem}
+            onSave={handleSubmit}
+            onCancel={handleCancel}
+            // Pass additional props as needed
+          />
+        ) : (
+          <div className="bg-card rounded-lg border p-6 mb-6">
+            <h3 className="text-lg font-medium mb-4">
+              {editingItem ? `Edit ${config.name}` : `Create ${config.name}`}
+            </h3>
+            
+            <div className="space-y-4">
+              {/* Row 1: Icon + Name + Identifier */}
+              <div className="flex items-start gap-4">
+                {fieldGroups.iconField && (
+                  <div className="flex-shrink-0">
+                    <label className="text-sm font-medium block mb-2">
+                      {fieldGroups.iconField.label}
+                      {fieldGroups.iconField.required && <span className="text-red-500 ml-1">*</span>}
                     </label>
-                    {renderFormField(field)}
+                    {renderFormField(fieldGroups.iconField)}
                   </div>
-                ))}
+                )}
+                {fieldGroups.nameField && (
+                  <div className="flex-1">
+                    <label className="text-sm font-medium block mb-2">
+                      {fieldGroups.nameField.label}
+                      {fieldGroups.nameField.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    <Input
+                      value={(formData[fieldGroups.nameField?.key || 'name'] as string) || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const nameKey = fieldGroups.nameField?.key || 'name';
+                        setFormData(prev => {
+                          const newData = { ...prev, [nameKey]: value };
+                          
+                          // Auto-populate identifier with first 3 characters (only if identifier exists and is empty or auto-generated)
+                          if (fieldGroups.identifierField && (!prev[fieldGroups.identifierField.key] || prev[fieldGroups.identifierField.key].length <= 3)) {
+                            newData[fieldGroups.identifierField.key] = value.slice(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                          }
+                          
+                          return newData;
+                        });
+                      }}
+                      placeholder={fieldGroups.nameField?.label || 'Name'}
+                    />
+                  </div>
+                )}
+                {fieldGroups.identifierField && (
+                  <div className="w-32">
+                    <label className="text-sm font-medium block mb-2">
+                      {fieldGroups.identifierField.label}
+                      {fieldGroups.identifierField.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    <Input
+                      value={(formData[fieldGroups.identifierField?.key || 'identifier'] as string) || ''}
+                      onChange={(e) => {
+                        const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                        const identifierKey = fieldGroups.identifierField?.key || 'identifier';
+                        setFormData(prev => ({ ...prev, [identifierKey]: value }));
+                      }}
+                      placeholder={fieldGroups.identifierField?.label || 'Identifier'}
+                      className="font-mono"
+                    />
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* Row 2: Description (full width) */}
+              {fieldGroups.descriptionField && (
+                <div className="w-full">
+                  <label className="text-sm font-medium block mb-2">
+                    {fieldGroups.descriptionField.label}
+                    {fieldGroups.descriptionField.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  {renderFormField(fieldGroups.descriptionField)}
+                </div>
+              )}
+
+              {/* Row 3: Status Flow + Field Set */}
+              <div className="grid grid-cols-2 gap-4">
+                {fieldGroups.statusFlowField && (
+                  <div>
+                    <label className="text-sm font-medium block mb-2">
+                      {fieldGroups.statusFlowField.label}
+                      {fieldGroups.statusFlowField.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {renderFormField({
+                      ...fieldGroups.statusFlowField,
+                      options: { actionPrefix: 'statusFlow' }
+                    })}
+                  </div>
+                )}
+                {fieldGroups.fieldSetField && (
+                  <div>
+                    <label className="text-sm font-medium block mb-2">
+                      {fieldGroups.fieldSetField.label}
+                      {fieldGroups.fieldSetField.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {renderFormField({
+                      ...fieldGroups.fieldSetField,
+                      options: { actionPrefix: 'fieldSet' }
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Other fields */}
+              {fieldGroups.otherFields.length > 0 && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {fieldGroups.otherFields.map(field => (
+                    <div key={field.key} className="space-y-2">
+                      <label className="text-sm font-medium">
+                        {field.label}
+                        {field.required && <span className="text-red-500 ml-1">*</span>}
+                      </label>
+                      {renderFormField(field)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={create.isPending || update.isPending}
+                className="bg-black hover:bg-black/90"
+              >
+                {editingItem ? 'Update' : 'Create'}
+              </Button>
+            </div>
           </div>
-          
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={handleCancel}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmit}
-              disabled={create.isPending || update.isPending}
-              className="bg-black hover:bg-black/90"
-            >
-              {editingItem ? 'Update' : 'Create'}
-            </Button>
-          </div>
-        </div>
+        )
       )}
 
       {/* Data Table */}
@@ -749,20 +752,23 @@ export function ResourceSettingsPage({ config, title, description, onEdit }: Res
         <Table>
           <TableHeader>
             <TableRow>
-              {config.displayFields.map(field => (
-                <TableHead key={field} className="font-medium">
-                  {field === 'avatarIcon' ? 'Avatar' : 
-                   field === 'isPrivate' ? 'Private' :
-                   field === 'timezone' ? 'Time Zone' :
-                   field === 'statusFlowId' ? 'Status Flow' :
-                   field === 'fieldSetId' ? 'Field Set' :
-                   field === 'displayName' ? 'Display Name' :
-                   field === 'lastName' ? 'Last Name' :
-                   field === 'teams' ? 'Teams' :
-                   field === 'status' ? 'Status' :
-                   field.charAt(0).toUpperCase() + field.slice(1)}
-                </TableHead>
-              ))}
+              {config.displayFields.map(field => {
+                let fieldObj: { key: string; label?: string; render?: React.ComponentType<any>; clickable?: boolean; };
+                if (typeof field === 'string') {
+                  fieldObj = config.createFields.find(f => f.key === field) || { key: field };
+                } else {
+                  fieldObj = field;
+                }
+                return (
+                  <TableHead
+                    key={fieldObj.key}
+                    className="font-medium"
+                    style={config.columnWidths && config.columnWidths[fieldObj.key] ? { width: config.columnWidths[fieldObj.key] } : {}}
+                  >
+                    {fieldObj.label || fieldObj.key.charAt(0).toUpperCase() + fieldObj.key.slice(1)}
+                  </TableHead>
+                );
+              })}
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -782,140 +788,32 @@ export function ResourceSettingsPage({ config, title, description, onEdit }: Res
             ) : (
               filteredItems.map((item: BaseResource) => (
                 <TableRow key={item.id}>
-                  {config.displayFields.map(field => (
-                    <TableCell key={field}>
-                      {(field === 'icon' || field === 'avatarIcon') && (item as any)[field] ? (
-                        <div className="w-8 h-8 flex items-center justify-center border rounded bg-gray-50">
-                          {(() => {
-                            const IconComponent = getIconComponent((item as any)[field]);
-                            return <IconComponent className="h-4 w-4 text-blue-600" />;
-                          })()}
-                        </div>
-                      ) : field === 'avatarIcon' && config.actionPrefix === 'member' ? (
-                        <div className="w-8 h-8 flex items-center justify-center border rounded bg-gray-50 text-sm font-medium">
-                          {(() => {
-                            const member = item as any;
-                            if (member.avatarIcon) {
-                              const IconComponent = getIconComponent(member.avatarIcon);
-                              return <IconComponent className="h-4 w-4 text-blue-600" />;
-                            } else if (member.avatarEmoji) {
-                              return <span className="text-sm">{member.avatarEmoji}</span>;
-                            } else if (member.avatarImageUrl) {
-                              return <img src={member.avatarImageUrl} alt="Avatar" className="w-8 h-8 rounded" />;
-                            } else {
-                              // Show initials
-                              const initials = member.name ? member.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '?';
-                              return <span className="text-xs font-medium text-gray-600">{initials}</span>;
-                            }
-                          })()}
-                        </div>
-                      ) : field === 'isPrivate' ? (
-                        <Badge variant={(item as any)[field] ? 'secondary' : 'outline'}>
-                          {(item as any)[field] ? 'Private' : 'Public'}
-                        </Badge>
-                      ) : field === 'timezone' ? (
-                        (() => {
-                          const tz = (item as any)[field];
-                          if (!tz) return '-';
-                          // Show a shorter, friendlier timezone label
-                          const tzLabels: Record<string, string> = {
-                            'America/New_York': 'ET',
-                            'America/Chicago': 'CT',
-                            'America/Denver': 'MT',
-                            'America/Los_Angeles': 'PT',
-                            'UTC': 'UTC',
-                            'Europe/London': 'GMT',
-                            'Europe/Paris': 'CET',
-                            'Europe/Berlin': 'CET',
-                            'Asia/Tokyo': 'JST',
-                            'Asia/Shanghai': 'CST',
-                            'Asia/Kolkata': 'IST',
-                            'Australia/Sydney': 'AEDT'
-                          };
-                          return tzLabels[tz] || tz;
-                        })()
-                      ) : field === 'statusFlowId' ? (
-                        (() => {
-                          const id = (item as any)[field];
-                          if (!id) return '-';
-                          const statusFlow = getDropdownOptions('statusFlow').find((sf: any) => sf.id === id);
-                          return statusFlow?.name || '-';
-                        })()
-                      ) : field === 'fieldSetId' ? (
-                        (() => {
-                          const id = (item as any)[field];
-                          if (!id) return '-';
-                          const fieldSet = getDropdownOptions('fieldSet').find((fs: any) => fs.id === id);
-                          return fieldSet?.name || '-';
-                        })()
-                      ) : field === 'teams' && config.actionPrefix === 'member' ? (
-                        (() => {
-                          const member = item as any;
-                          const teams = member.teams || [];
-                          const isExpanded = expandedTeams.has(member.id);
-                          
-                          if (teams.length === 0) {
-                            return <span className="text-muted-foreground">No teams</span>;
-                          }
-                          
-                          return (
-                            <div className="space-y-1">
-                              <button
-                                onClick={() => setExpandedTeams(prev => {
-                                  const newSet = new Set(prev);
-                                  if (isExpanded) {
-                                    newSet.delete(member.id);
-                                  } else {
-                                    newSet.add(member.id);
-                                  }
-                                  return newSet;
-                                })}
-                                className="flex items-center gap-1 text-sm hover:text-blue-600 transition-colors"
-                              >
-                                {isExpanded ? (
-                                  <ChevronDown className="h-3 w-3" />
-                                ) : (
-                                  <ChevronRight className="h-3 w-3" />
-                                )}
-                                <span>{teams.length} team{teams.length > 1 ? 's' : ''}</span>
-                              </button>
-                              {isExpanded && (
-                                <div className="ml-4 space-y-1">
-                                  {teams.map((team: any) => (
-                                    <div key={team.id} className="flex items-center gap-2 text-sm">
-                                      <span className="font-medium">{team.name}</span>
-                                      <Badge variant="outline" className="text-xs">
-                                        {team.role}
-                                      </Badge>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()
-                      ) : field === 'status' && config.actionPrefix === 'member' ? (
-                        (() => {
-                          const status = (item as any)[field];
-                          const statusConfig = {
-                            'ACTIVE': { label: 'Active', variant: 'default' as const, className: 'bg-green-100 text-green-800' },
-                            'PENDING': { label: 'Invited', variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800' },
-                            'DISABLED': { label: 'Disabled', variant: 'outline' as const, className: 'bg-gray-100 text-gray-800' }
-                          };
-                          
-                          const statusDisplay = statusConfig[status as keyof typeof statusConfig] || statusConfig['ACTIVE'];
-                          
-                          return (
-                            <Badge variant={statusDisplay.variant} className={statusDisplay.className}>
-                              {statusDisplay.label}
-                            </Badge>
-                          );
-                        })()
-                      ) : (
-                        (item as any)[field] || '-'
-                      )}
-                    </TableCell>
-                  ))}
+                  {config.displayFields.map(field => {
+                    let fieldObj: { key: string; label?: string; render?: React.ComponentType<any>; clickable?: boolean; };
+                    if (typeof field === 'string') {
+                      fieldObj = config.createFields.find(f => f.key === field) || { key: field };
+                    } else {
+                      fieldObj = field;
+                    }
+                    const key = fieldObj.key;
+                    const Renderer = fieldObj.render;
+                    return (
+                      <TableCell
+                        key={key}
+                        style={config.columnWidths && config.columnWidths[key] ? { width: config.columnWidths[key] } : {}}
+                        className={fieldObj.clickable ? 'cursor-pointer hover:bg-muted/50' : ''}
+                        onClick={fieldObj.clickable ? () => handleEdit(item) : undefined}
+                      >
+                        {key === 'icon' ? (
+                          <IconField value={item[key]} readOnly={true} />
+                        ) : Renderer ? (
+                          <Renderer {...(key === 'teams' ? { teams: item[key], expanded: expandedTeams.has(item.id), onToggle: (id: string) => setExpandedTeams(prev => { const newSet = new Set(prev); if (newSet.has(id)) { newSet.delete(id); } else { newSet.add(id); } return newSet; }), memberId: item.id } : key === 'status' ? { status: item[key] } : { value: item[key] })} />
+                        ) : (
+                          (item as any)[key] || '-'
+                        )}
+                      </TableCell>
+                    );
+                  })}
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -1029,6 +927,19 @@ const CustomResourcePage = () => {
       { key: 'name', label: 'Name', type: 'text', required: true },
       { key: 'customField', label: 'Custom Field', type: 'text' },
       { key: 'status', label: 'Status', type: 'select', required: true }
+    ]
+  });
+  return <ResourceSettingsPage config={config} />;
+};
+
+// For resource with clickable columns:
+const ClickableResourcePage = () => {
+  const config = generateResourceConfig('team', {
+    displayFields: [
+      'icon',
+      { key: 'name', label: 'Name', clickable: true }, // Makes the name column clickable to edit
+      { key: 'description', label: 'Description', clickable: true }, // Makes description clickable too
+      'createdAt'
     ]
   });
   return <ResourceSettingsPage config={config} />;

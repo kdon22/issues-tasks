@@ -19,10 +19,9 @@ import {
   ChevronRight,
   Building2
 } from 'lucide-react';
-import { IconPicker, getIconComponent } from '@/components/ui/icon-picker';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { IconField } from '@/components/settings/fields/icon-field';
 import { cn } from '@/lib/utils';
-import { useTeams, useMembers } from '@/lib/hooks';
+import { resourceHooks } from '@/lib/hooks';
 import { toast } from 'sonner';
 
 interface CreateProjectDialogProps {
@@ -41,11 +40,8 @@ interface ProjectFormData {
   leadUserId: string;
   startDate: string;
   targetDate: string;
-  // Icon settings
-  iconType: 'INITIALS' | 'ICON' | 'EMOJI' | 'IMAGE';
-  iconName?: string;
-  iconEmoji?: string;
-  iconColor: string;
+  // Unified icon format: "iconName:color"
+  icon: string;
 }
 
 interface PropertyBadgeProps {
@@ -124,10 +120,7 @@ export function CreateProjectDialog({
     leadUserId: '',
     startDate: '',
     targetDate: '',
-    iconType: 'INITIALS',
-    iconName: undefined,
-    iconEmoji: undefined,
-    iconColor: '#6366F1'
+    icon: 'Building:#6366F1' // Default unified icon format
   });
 
   // const { state: teamsState } = useCachedResource<Team>({
@@ -149,8 +142,8 @@ export function CreateProjectDialog({
   // });
 
   // Extract items from state with proper typing
-  const { data: teams = [], isLoading: loadingTeams } = useTeams();
-  const { data: users = [], isLoading: loadingUsers } = useMembers();
+  const { data: teams = [], isLoading: loadingTeams } = resourceHooks['team'].useList();
+  const { data: users = [], isLoading: loadingUsers } = resourceHooks['member'].useList();
 
   // Transform teams for MultiSelect
   const teamOptions = teams.map((team: Team) => ({
@@ -222,10 +215,7 @@ export function CreateProjectDialog({
       leadUserId: '',
       startDate: '',
       targetDate: '',
-      iconType: 'INITIALS',
-      iconName: undefined,
-      iconEmoji: undefined,
-      iconColor: '#6366F1'
+      icon: 'Building:#6366F1'
     });
     setValidationErrors({});
     setHasAttemptedSubmit(false);
@@ -256,8 +246,10 @@ export function CreateProjectDialog({
       if (formData.summary?.trim()) {
         payload.summary = formData.summary;
       }
-      if (formData.iconColor) {
-        payload.color = formData.iconColor;
+      // Extract color from unified icon format
+      const iconParts = formData.icon.split(':');
+      if (iconParts.length === 2 && iconParts[1]) {
+        payload.color = iconParts[1];
       }
       if (formData.leadUserId) {
         payload.leadUserId = formData.leadUserId;
@@ -354,52 +346,12 @@ export function CreateProjectDialog({
         <div className="space-y-8">
           {/* Icon and Project Name */}
           <div className="flex items-start gap-4">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button 
-                  className="w-12 h-12 rounded-lg flex items-center justify-center border border-gray-200 hover:bg-gray-50 transition-colors"
-                  style={{ backgroundColor: formData.iconType === 'INITIALS' ? formData.iconColor : 'transparent' }}
-                >
-                  {formData.iconType === 'INITIALS' && (
-                    <span className="text-white font-bold text-sm">
-                      {projectInitials}
-                    </span>
-                  )}
-                  {formData.iconType === 'ICON' && formData.iconName && (() => {
-                    const IconComponent = getIconComponent(formData.iconName);
-                    return <IconComponent className="w-6 h-6" style={{ color: formData.iconColor }} />;
-                  })()}
-                  {formData.iconType === 'EMOJI' && (
-                    <span className="text-xl">
-                      {formData.iconEmoji || '🚀'}
-                    </span>
-                  )}
-                  {formData.iconType === 'IMAGE' && (
-                    <span className="text-white font-bold text-sm">
-                      {projectInitials}
-                    </span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent 
-                className="w-auto p-4" 
-                align="start" 
-                side="bottom" 
-                sideOffset={4}
-              >
-                <IconPicker
-                  selectedIcon={formData.iconName}
-                  selectedColor={formData.iconColor}
-                  selectedEmoji={formData.iconEmoji}
-                  selectedAvatarType={formData.iconType}
-                  teamName={formData.name}
-                  onIconSelect={(iconName) => setFormData(prev => ({ ...prev, iconName, iconType: 'ICON' }))}
-                  onColorSelect={(color) => setFormData(prev => ({ ...prev, iconColor: color }))}
-                  onEmojiSelect={(emoji) => setFormData(prev => ({ ...prev, iconEmoji: emoji, iconType: 'EMOJI' }))}
-                  onAvatarTypeSelect={(type) => setFormData(prev => ({ ...prev, iconType: type }))}
-                />
-              </PopoverContent>
-            </Popover>
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gray-100 border border-gray-200">
+                             <IconField
+                 value={formData.icon}
+                 onChange={(newIcon: string) => setFormData(prev => ({ ...prev, icon: newIcon }))}
+               />
+            </div>
             <div className="flex-1 space-y-2">
               <div>
                 <div className="flex items-center gap-4">

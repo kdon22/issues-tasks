@@ -20,11 +20,7 @@ interface Team {
   name: string;
   identifier: string;
   description?: string;
-  avatarType: 'INITIALS' | 'ICON' | 'EMOJI' | 'IMAGE';
-  avatarIcon?: string;
-  avatarColor?: string;
-  avatarEmoji?: string;
-  avatarImageUrl?: string;
+  icon?: string; // Combined "iconName:color" format
   memberCount: number;
   issueCount: number;
   isPrivate: boolean;
@@ -41,7 +37,7 @@ interface TeamCardProps {
 }
 
 import { Users, Settings, MoreHorizontal, Lock, Hash } from 'lucide-react';
-import { getIconComponent } from '@/components/ui/icon-picker';
+import { IconField } from '@/components/settings/fields/icon-field';
 
 export function TeamCard({ team, onEdit, onDelete, onViewSettings }: TeamCardProps) {
   const getTeamInitials = (name: string) => {
@@ -54,47 +50,11 @@ export function TeamCard({ team, onEdit, onDelete, onViewSettings }: TeamCardPro
   };
 
   const renderTeamAvatar = () => {
-    switch (team.avatarType) {
-      case 'INITIALS':
-        return (
-          <div 
-            className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold text-sm"
-            style={{ backgroundColor: team.avatarColor || '#6366F1' }}
-          >
-            {getTeamInitials(team.name)}
-          </div>
-        );
-      case 'ICON':
-        const IconComponent = getIconComponent(team.avatarIcon || 'Users');
-        return (
-          <div 
-            className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
-            style={{ backgroundColor: team.avatarColor || '#6366F1' }}
-          >
-            <IconComponent className="w-5 h-5" />
-          </div>
-        );
-      case 'EMOJI':
-        return (
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl bg-gray-100 dark:bg-gray-800">
-            {team.avatarEmoji || '🚀'}
-          </div>
-        );
-      case 'IMAGE':
-        return (
-          <Avatar className="w-10 h-10">
-            <AvatarFallback>
-              {getTeamInitials(team.name)}
-            </AvatarFallback>
-          </Avatar>
-        );
-      default:
-        return (
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-            <Users className="w-5 h-5 text-gray-400" />
-          </div>
-        );
-    }
+    return (
+      <div className="w-10 h-10 rounded-lg">
+        <IconField value={team.icon || 'Users:#6366F1'} readOnly={true} />
+      </div>
+    );
   };
 
   return (

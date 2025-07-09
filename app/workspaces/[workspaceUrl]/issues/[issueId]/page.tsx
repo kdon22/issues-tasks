@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { issueHooks, teamHooks, projectHooks, stateHooks, issueTypeHooks, memberHooks } from '@/lib/hooks';
+import { resourceHooks } from '@/lib/hooks';
 import { IssueDetailView } from '@/components/issues/issue-detail-view';
 import { IssueDetailHeader } from '@/components/issues/issue-detail-header';
 import { AppShell } from '@/components/layout/app-shell';
@@ -16,12 +16,12 @@ export default function IssueDetailPage() {
   const { data: session } = useSession();
   
   // Use the new DRY resource hooks
-  const { data: issue, isLoading: issueLoading, error: issueError } = issueHooks.useGet(issueId as string);
-  const { data: teams = [], isLoading: teamsLoading } = teamHooks.useList();
-  const { data: projects = [], isLoading: projectsLoading } = projectHooks.useList();
-  const { data: states = [], isLoading: statesLoading } = stateHooks.useList();
-  const { data: issueTypes = [], isLoading: issueTypesLoading } = issueTypeHooks.useList();
-  const { data: members = [], isLoading: membersLoading } = memberHooks.useList();
+  const { data: issue, isLoading: issueLoading, error: issueError } = resourceHooks['issue'].useGet(issueId as string);
+  const { data: teams = [], isLoading: teamsLoading } = resourceHooks['team'].useList();
+  const { data: projects = [], isLoading: projectsLoading } = resourceHooks['project'].useList();
+  const { data: states = [], isLoading: statesLoading } = resourceHooks['state'].useList();
+  const { data: issueTypes = [], isLoading: issueTypesLoading } = resourceHooks['issueType'].useList();
+  const { data: members = [], isLoading: membersLoading } = resourceHooks['member'].useList();
 
   if (!session?.user?.id || !workspace) {
     return notFound();

@@ -28,7 +28,7 @@ import { WorkspaceSwitcher } from './workspace-switcher';
 import { CommandPalette } from './command-palette';
 import { NewIssueDialog } from '@/components/issues/new-issue-dialog';
 import { useKeyboardShortcuts } from '@/lib/hooks/use-keyboard-shortcuts';
-import { useTeams, useMembers, useProjects, useIssueTypes } from '@/lib/hooks';
+import { resourceHooks } from '@/lib/hooks';
 
 interface SidebarItem {
   icon: React.ElementType;

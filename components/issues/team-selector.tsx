@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getIconComponent } from '@/components/ui/icon-picker';
 import { 
   Popover, 
   PopoverContent, 
@@ -14,10 +15,7 @@ interface Team {
   id: string;
   name: string;
   identifier: string;
-  avatarColor?: string;
-  avatarEmoji?: string;
-  avatarIcon?: string;
-  avatarType?: 'INITIALS' | 'ICON' | 'EMOJI' | 'IMAGE';
+  icon?: string; // Combined "iconName:color" format
 }
 
 interface TeamSelectorProps {
@@ -40,18 +38,17 @@ export function TeamSelector({
   const [isOpen, setIsOpen] = useState(false);
 
   const renderTeamAvatar = (team: Team) => {
-    const color = team.avatarColor || '#6B7280';
+    // Parse the unified icon format "iconName:color"
+    const [iconName, color] = team.icon?.split(':') || ['Users', '#6B7280'];
+    const displayColor = color || '#6B7280';
+    const IconComponent = getIconComponent(iconName || 'Users');
     
     return (
       <div 
-        className="w-4 h-4 rounded-sm flex items-center justify-center text-xs font-medium text-white flex-shrink-0"
-        style={{ backgroundColor: color }}
+        className="w-4 h-4 rounded-sm flex items-center justify-center flex-shrink-0"
+        style={{ backgroundColor: displayColor }}
       >
-        {team.avatarType === 'EMOJI' && team.avatarEmoji ? (
-          <span>{team.avatarEmoji}</span>
-        ) : (
-          <span>{team.identifier}</span>
-        )}
+        <IconComponent className="w-3 h-3 text-white" />
       </div>
     );
   };

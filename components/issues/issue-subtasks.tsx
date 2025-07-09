@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { CreateSubtaskDialog } from './create-subtask-dialog';
 import { IssueTypePicker, IssueTypeIcon } from './issue-type-picker';
 import { StatusSelector } from './status-selector';
-import { useCreateIssue, useUpdateIssue, useActionQuery } from '@/lib/hooks';
+import { resourceHooks, useActionQuery } from '@/lib/hooks';
 import { toast } from 'sonner';
 
 interface User {
@@ -398,8 +398,8 @@ export function IssueSubTasks({
   const [availableStates, setAvailableStates] = useState<State[]>(states);
   
   // Use action hooks
-  const { createIssue } = useCreateIssue();
-  const { updateIssue } = useUpdateIssue();
+  const { create: createIssue } = resourceHooks['issue'].useCreate();
+  const { update: updateIssue } = resourceHooks['issue'].useUpdate();
   
   // Query for states based on selected issue type
   const { data: statesData } = useActionQuery<State[]>(

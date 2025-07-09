@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ColorPicker } from '@/components/ui/color-picker';
-import { useActionQuery, useActionMutation, useActionClient } from '@/lib/hooks/use-action-api';
-import { useQuery } from '@tanstack/react-query';
+import { resourceHooks, useActionClient, useActionMutation } from '@/lib/hooks/use-action-api';
 import { ArrowLeft, Check, X, Edit2, Plus, Circle, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -191,136 +190,36 @@ export function StatusFlowEditor({ flow, workspaceUrl, onBack, onUpdate }: Statu
     })
   );
 
-  // Load states for this status flow using a custom hook
-  const useStatusFlow = (id: string) => {
-    const client = useActionClient();
-    
-    return useQuery({
-      queryKey: ['statusFlow.get', id],
-      queryFn: async (): Promise<StatusFlow> => {
-        if (!client) throw new Error('No action client available');
-        
-        const response = await client.executeAction<StatusFlow>({ 
-          action: 'statusFlow.get',
-          resourceId: id
-        });
-        
-        if (!response.success) {
-          throw new Error(response.error || 'Failed to fetch status flow');
-        }
-        
-        return response.data!;
-      },
-      enabled: !!client && !!id,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
-      retry: 2
-    });
-  };
-  
-  const { data: statusFlowData, isLoading: loading, error, refetch } = useStatusFlow(flow.id);
+  // Use standardized resource hooks with optimistic updates enabled
+  const { data: statusFlowData, isLoading: loading, error } = resourceHooks.statusFlow.useGet(flow.id);
+  const statusFlowUpdate = resourceHooks.statusFlow.useUpdate();
+  const stateCreate = resourceHooks.state.useCreate();
+  const stateUpdate = resourceHooks.state.useUpdate();
+  const stateDelete = resourceHooks.state.useDelete();
+
   const states = (statusFlowData?.states || []).map((state: any) => ({
     ...state,
     position: state.position || 0
   })) as State[];
-  
-  // Mutations for status flow operations
-  const updateFlowMutation = useActionMutation({
-    onSuccess: () => {
+
+  // Helper functions using standardized hooks
+  const handleUpdateFlowInfo = async () => {
+    try {
+      await statusFlowUpdate.update(flow.id, { name: flowName, description: flowDescription });
       toast.success('Status flow updated successfully');
       setEditingFlowInfo(false);
       onUpdate();
-    },
-    onError: (error) => {
+    } catch (error: any) {
       toast.error(`Failed to update status flow: ${error.message}`);
-    },
-    optimisticUpdate: true
-  });
-  
-  // Mutations for state operations
-  const createStateMutation = useActionMutation({
-    onSuccess: () => {
-      toast.success('Status created successfully');
-      setCreatingInCategory(null);
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(`Failed to create status: ${error.message}`);
-    },
-    optimisticUpdate: true
-  });
-  
-  const updateStateMutation = useActionMutation({
-    onSuccess: () => {
-      toast.success('Status updated successfully');
-      setEditingStatusId(null);
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(`Failed to update status: ${error.message}`);
-    },
-    optimisticUpdate: true
-  });
-  
-  const deleteStateMutation = useActionMutation({
-    onSuccess: () => {
-      toast.success('Status deleted successfully');
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete status: ${error.message}`);
-    },
-    optimisticUpdate: true
-  });
-
-  // Helper functions
-  const createStatus = async (data: any) => {
-    createStateMutation.mutate({
-      action: 'state.create',
-      data: {
-        ...data,
-        statusFlowId: flow.id
-      }
-    });
-  };
-  
-  const updateStatus = async (id: string, data: any) => {
-    updateStateMutation.mutate({
-      action: 'state.update',
-      resourceId: id,
-      data
-    });
-  };
-  
-  const deleteStatus = async (id: string) => {
-    deleteStateMutation.mutate({
-      action: 'state.delete',
-      resourceId: id
-    });
-  };
-
-  const handleUpdateFlowInfo = async () => {
-    updateFlowMutation.mutate({
-      action: 'statusFlow.update',
-      resourceId: flow.id,
-      data: { name: flowName, description: flowDescription }
-    });
-  };
-
-  const handleStartCreating = (type: State['type']) => {
-    setCreatingInCategory(type);
-    setEditingStatusId(null);
-  };
-
-  const handleCancelCreating = () => {
-    setCreatingInCategory(null);
+    }
   };
 
   const handleCreateStatus = async (statusData: { name: string; description: string; color: string; type: State['type'] }) => {
     try {
-      await createStatus({
+      await stateCreate.create({
         ...statusData,
-        position: states.filter((s: State) => s.type === statusData.type).length
+        position: states.filter((s: State) => s.type === statusData.type).length,
+        statusFlowId: flow.id
       });
       
       // Update the last color used for this category
@@ -329,16 +228,16 @@ export function StatusFlowEditor({ flow, workspaceUrl, onBack, onUpdate }: Statu
         [statusData.type]: statusData.color
       }));
       
-      
+      toast.success('Status created successfully');
       setCreatingInCategory(null);
-    } catch (error) {
-      toast.error('Failed to create status');
+    } catch (error: any) {
+      toast.error(`Failed to create status: ${error.message}`);
     }
   };
 
   const handleUpdateStatus = async (status: State, updates: Partial<State>) => {
     try {
-      await updateStatus(status.id, updates);
+      await stateUpdate.update(status.id, updates);
       
       // Update the last color used for this category if color was changed
       if (updates.color && typeof updates.color === 'string') {
@@ -348,20 +247,31 @@ export function StatusFlowEditor({ flow, workspaceUrl, onBack, onUpdate }: Statu
         }));
       }
       
-      
+      toast.success('Status updated successfully');
       setEditingStatusId(null);
-    } catch (error) {
-      toast.error('Failed to update status');
+      // Don't call refetch() - let optimistic updates handle it
+    } catch (error: any) {
+      toast.error(`Failed to update status: ${error.message}`);
     }
   };
 
   const handleDeleteStatus = async (status: State) => {
     try {
-      await deleteStatus(status.id);
-      toast.success('Status deleted');
-    } catch (error) {
-      toast.error('Failed to delete status');
+      await stateDelete.delete(status.id);
+      toast.success('Status deleted successfully');
+      // Don't call refetch() - let optimistic updates handle it
+    } catch (error: any) {
+      toast.error(`Failed to delete status: ${error.message}`);
     }
+  };
+
+  const handleStartCreating = (type: State['type']) => {
+    setCreatingInCategory(type);
+    setEditingStatusId(null);
+  };
+
+  const handleCancelCreating = () => {
+    setCreatingInCategory(null);
   };
 
   const handleDragEnd = async (event: DragEndEvent, categoryType: string) => {
@@ -377,15 +287,15 @@ export function StatusFlowEditor({ flow, workspaceUrl, onBack, onUpdate }: Statu
 
     const reorderedStatuses = arrayMove(categoryStatuses, oldIndex, newIndex);
     
-    // Update positions
+    // Update positions optimistically
     try {
       await Promise.all(
         reorderedStatuses.map((status: State, index: number) => 
-          updateStatus(status.id, { position: index })
+          stateUpdate.update(status.id, { position: index })
         )
       );
-
-    } catch (error) {
+      // Optimistic updates will handle the UI changes
+    } catch (error: any) {
       toast.error('Failed to reorder statuses');
     }
   };
@@ -399,7 +309,9 @@ export function StatusFlowEditor({ flow, workspaceUrl, onBack, onUpdate }: Statu
   // Group statuses by category
   const groupedStatuses = STATUS_CATEGORIES.map(category => ({
     category,
-    statuses: filteredStatuses.filter((status: State) => status.type === category.key)
+    statuses: filteredStatuses
+      .filter((status: State) => status.type === category.key)
+      .sort((a: State, b: State) => a.position - b.position) // Sort by position within category
   }));
 
   // Helper function to get the default color for a category
@@ -430,7 +342,7 @@ export function StatusFlowEditor({ flow, workspaceUrl, onBack, onUpdate }: Statu
                 placeholder="Status flow name"
                 className="w-48"
               />
-              <Button onClick={handleUpdateFlowInfo} size="sm">
+              <Button onClick={handleUpdateFlowInfo} size="sm" disabled={statusFlowUpdate.isPending}>
                 <Check className="w-4 h-4" />
               </Button>
               <Button onClick={() => setEditingFlowInfo(false)} variant="outline" size="sm">
@@ -544,7 +456,7 @@ export function StatusFlowEditor({ flow, workspaceUrl, onBack, onUpdate }: Statu
                         <SortableStatusRow
                           key={status.id}
                           status={status}
-                          progress={(index + 1) / statuses.length}
+                          progress={statuses.length > 0 ? (index + 1) / statuses.length : 0}
                           isEditing={editingStatusId === status.id}
                           onStartEdit={() => setEditingStatusId(status.id)}
                           onCancelEdit={() => setEditingStatusId(null)}
@@ -655,11 +567,13 @@ function StatusRow({
   const [editColor, setEditColor] = useState(status.color);
 
   const handleSave = () => {
-    onUpdate(status, { 
-      name: editName, 
-      description: editDescription,
+    const updates: Partial<State> = {
+      name: editName.trim(),
+      description: editDescription.trim(),
       color: editColor
-    });
+    };
+    
+    onUpdate(status, updates);
   };
 
   const handleCancel = () => {
@@ -678,13 +592,13 @@ function StatusRow({
       </td>
       <td className="p-2">
         <div className="flex items-center gap-3">
-                     {isEditing ? (
-             <ColorPicker
-               selectedColor={editColor}
-               onColorSelect={setEditColor}
-               className="w-6 h-6"
-             />
-           ) : (
+          {isEditing ? (
+            <ColorPicker
+              selectedColor={editColor}
+              onColorSelect={setEditColor}
+              className="w-6 h-6"
+            />
+          ) : (
             <ProgressPie
               color={status.color}
               progress={progress}
@@ -797,13 +711,13 @@ function CreateStatusRow({
     <tr className="border-b bg-muted/10">
       <td className="p-2"></td>
       <td className="p-2">
-                 <div className="flex items-center gap-3">
-           <ColorPicker
-             selectedColor={color}
-             onColorSelect={setColor}
-             className="w-6 h-6"
-           />
-           <Input
+        <div className="flex items-center gap-3">
+          <ColorPicker
+            selectedColor={color}
+            onColorSelect={setColor}
+            className="w-6 h-6"
+          />
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={handleKeyDown}

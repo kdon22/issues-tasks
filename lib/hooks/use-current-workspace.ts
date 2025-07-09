@@ -9,10 +9,7 @@ interface Workspace {
   id: string;
   name: string;
   url: string;
-  avatarType: string;
-  avatarColor?: string;
-  avatarEmoji?: string;
-  avatarIcon?: string;
+  icon?: string;
   avatarImageUrl?: string;
   role: 'OWNER' | 'ADMIN' | 'MEMBER';
 }

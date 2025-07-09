@@ -15,10 +15,7 @@ export interface Team extends BaseResource {
   description?: string;
   timezone?: string;
   isPrivate?: boolean;
-  avatarIcon?: string;
-  avatarType?: string;
-  avatarEmoji?: string;
-  avatarImageUrl?: string;
+  icon?: string; // Combined "iconName:color" format
   settings?: any;
 }
 
@@ -43,9 +40,7 @@ export interface Member extends BaseResource {
   role: string;
   lastName?: string;
   displayName?: string;
-  avatarType?: string;
-  avatarIcon?: string;
-  avatarEmoji?: string;
+  icon?: string; // Combined "iconName:color" format
   avatarImageUrl?: string;
   status: 'ACTIVE' | 'PENDING' | 'DISABLED';
   teams?: { id: string; name: string; role: string }[];

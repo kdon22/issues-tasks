@@ -18,19 +18,6 @@ export {
   createResourceHooks,
   resourceHooks,
   
-  // Individual resource hook instances (for convenience)
-  teamHooks,
-  projectHooks,
-  labelHooks,
-  memberHooks,
-  issueTypeHooks,
-  stateHooks,
-  statusFlowHooks,
-  fieldSetHooks,
-  issueHooks,
-  commentHooks,
-  reactionHooks,
-  
   // Utility for creating new resource hooks
   createNewResourceHooks
 } from './use-action-api';

@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { StatusSelector } from './status-selector';
 import { TeamSelector } from './team-selector';
 import { IssueTypePicker } from './issue-type-picker';
-import { useCreateIssue, useActionQuery } from '@/lib/hooks';
+import { resourceHooks, useActionQuery } from '@/lib/hooks';
 import { toast } from 'sonner';
 
 // Schema for form validation
@@ -117,7 +117,7 @@ export function NewIssueDialog({
   const [popoverStates, setPopoverStates] = useState<{[key: string]: boolean}>({});
   
   // Use action hooks
-  const { createIssue } = useCreateIssue();
+  const { create: createIssue } = resourceHooks['issue'].useCreate();
   
   // Query for states based on selected issue type
   const { data: statesData } = useActionQuery<State[]>(

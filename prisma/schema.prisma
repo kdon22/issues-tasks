@@ -123,10 +123,7 @@ model Team {
   name           String
   identifier     String
   description    String?
-  avatarType     AvatarType   @default(INITIALS)
-  avatarIcon     String?
-  avatarEmoji    String?
-  avatarImageUrl String?
+  icon           String?      // Combined "iconName:color" format
   timezone       String?
   isPrivate      Boolean      @default(false)
   workspaceId    String

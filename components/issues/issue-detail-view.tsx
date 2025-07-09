@@ -16,7 +16,7 @@ import { IssueFieldsBar } from './issue-fields-bar';
 import { IssueTitle } from './issue-title';
 import { IssueDescription } from './issue-description';
 import { cn } from '@/lib/utils';
-import { useUpdateIssue } from '@/lib/hooks';
+import { resourceHooks } from '@/lib/hooks';
 
 interface User {
   id: string;
@@ -191,7 +191,7 @@ export function IssueDetailView({
   const [autoStartSubtaskCreation, setAutoStartSubtaskCreation] = useState(false);
   
   // Use the new action-based hook for updating issues
-  const { updateIssue } = useUpdateIssue();
+  const { update: updateIssue } = resourceHooks['issue'].useUpdate();
   
   // Field configurations are now provided via the unified issue loader
   // No need for client-side fetching

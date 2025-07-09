@@ -48,9 +48,7 @@ export interface Team {
   name: string;
   identifier: string;
   description?: string;
-  avatarType: string;
-  avatarIcon?: string;
-  avatarColor?: string;
+  icon?: string; // Combined "iconName:color" format
   workspaceId: string;
   createdAt: string;
   updatedAt: string;

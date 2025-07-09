@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PriorityBadge } from '@/components/ui/priority-badge';
 import { StateBadge } from '@/components/ui/state-badge';
 import { cn } from '@/lib/utils';
-import { useCreateIssue, useActionQuery } from '@/lib/hooks';
+import { resourceHooks, useActionQuery } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { IssueTypePicker } from './issue-type-picker';
 import { StatusSelector } from './status-selector';
@@ -101,7 +101,7 @@ export function CreateSubtaskDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Use action hooks
-  const { createIssue } = useCreateIssue();
+  const { create: createIssue } = resourceHooks['issue'].useCreate();
   
   // Query for states based on selected issue type
   const { data: statesData } = useActionQuery<State[]>(

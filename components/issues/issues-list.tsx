@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { IssueRow } from '@/components/issues/issue-row';
 import { EmptyState } from '@/components/issues/empty-state';
 import { LoadingState } from '@/components/issues/loading-state';
-import { useIssues, useUpdateIssue, useDeleteIssue, useOfflineStatus } from '@/lib/hooks';
+import { resourceHooks, useOfflineStatus } from '@/lib/hooks';
 
 interface Issue {
   id: string;
@@ -87,10 +87,10 @@ export function IssuesList({
 }: IssuesListProps) {
   const { isOffline, pendingCount } = useOfflineStatus();
   
-  // Use the new action-based hooks
-  const { data: issues = [], isLoading, error, refetch } = useIssues();
-  const { updateIssue } = useUpdateIssue();
-  const { deleteIssue } = useDeleteIssue();
+  // Use the new DRY resource hooks
+  const { data: issues = [], isLoading, error, refetch } = resourceHooks['issue'].useList();
+  const { update: updateIssue } = resourceHooks['issue'].useUpdate();
+  const { delete: deleteIssue } = resourceHooks['issue'].useDelete();
 
   // Filter issues locally based on current filters
   const filteredIssues = useMemo(() => {

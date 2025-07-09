@@ -258,10 +258,7 @@ export async function getUserTeams(workspaceId: string) {
           name: true,
           identifier: true,
           description: true,
-          avatarType: true,
-          avatarColor: true,
-          avatarEmoji: true,
-          avatarIcon: true,
+          icon: true,
           avatarImageUrl: true
         }
       }

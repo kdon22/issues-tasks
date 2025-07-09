@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { IconPicker } from '@/components/ui/icon-picker';
+import { IconField } from '@/components/settings/fields/icon-field';
 import { Plus, X, Upload, Hash, Clock, Users, Settings } from 'lucide-react';
 
 interface CreateTeamFormProps {
@@ -52,10 +52,7 @@ export function CreateTeamForm({ onCreateTeam, onCancel }: CreateTeamFormProps) 
   const [formData, setFormData] = useState({
     name: '',
     identifier: '',
-    avatarType: 'INITIALS' as 'INITIALS' | 'ICON' | 'EMOJI' | 'IMAGE',
-    avatarIcon: '',
-    avatarEmoji: '',
-    avatarColor: AVATAR_COLORS[0],
+    icon: 'Users:#6366F1', // Combined "iconName:color" format
     parentTeamId: 'none',
     copyFromTeamId: 'none',
     timezone: 'UTC',
@@ -89,10 +86,7 @@ export function CreateTeamForm({ onCreateTeam, onCancel }: CreateTeamFormProps) 
       setFormData({
         name: '',
         identifier: '',
-        avatarType: 'INITIALS',
-        avatarIcon: '',
-        avatarEmoji: '',
-        avatarColor: AVATAR_COLORS[0],
+        icon: 'Users:#6366F1',
         parentTeamId: 'none',
         copyFromTeamId: 'none',
         timezone: 'UTC',
@@ -106,19 +100,13 @@ export function CreateTeamForm({ onCreateTeam, onCancel }: CreateTeamFormProps) 
     }
   };
 
-  const getAvatarPreview = () => {
-    const initials = formData.name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-
-    return (
-      <div className={`w-10 h-10 rounded-md ${formData.avatarColor} flex items-center justify-center text-white font-medium text-sm`}>
-        {initials || 'T'}
-      </div>
-    );
+  // Parse the combined icon format
+  const parseIcon = (iconValue: string) => {
+    const parts = iconValue.split(':');
+    if (parts.length === 2) {
+      return { icon: parts[0], color: parts[1] };
+    }
+    return { icon: iconValue, color: '#6366F1' };
   };
 
   return (
@@ -146,18 +134,11 @@ export function CreateTeamForm({ onCreateTeam, onCancel }: CreateTeamFormProps) 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Team Icon */}
           <div className="space-y-3">
-            <label className="text-sm font-medium">Team icon</label>
-            <IconPicker
-              selectedIcon={formData.avatarIcon}
-              selectedColor={formData.avatarColor}
-              selectedEmoji={formData.avatarEmoji}
-              selectedAvatarType={formData.avatarType}
-              teamName={formData.name}
-              onIconSelect={(icon) => setFormData(prev => ({ ...prev, avatarIcon: icon }))}
-              onColorSelect={(color) => setFormData(prev => ({ ...prev, avatarColor: color }))}
-              onEmojiSelect={(emoji) => setFormData(prev => ({ ...prev, avatarEmoji: emoji }))}
-              onAvatarTypeSelect={(type) => setFormData(prev => ({ ...prev, avatarType: type }))}
-            />
+            <label className="text-sm font-medium">Team icon & color</label>
+                         <IconField
+               value={formData.icon}
+               onChange={(newIcon: string) => setFormData(prev => ({ ...prev, icon: newIcon }))}
+             />
           </div>
 
           {/* Team Name and Identifier */}

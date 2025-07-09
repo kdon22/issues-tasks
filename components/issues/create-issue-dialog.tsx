@@ -35,7 +35,7 @@ import {
   FormLabel, 
   FormMessage 
 } from '@/components/ui/form';
-import { useCreateIssue } from '@/lib/hooks';
+import { resourceHooks } from '@/lib/hooks';
 import { toast } from 'sonner';
 
 const createIssueSchema = z.object({
@@ -60,7 +60,7 @@ interface CreateIssueDialogProps {
 export function CreateIssueDialog({ open, onOpenChange }: CreateIssueDialogProps) {
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const createIssue = useCreateIssue();
+  const { create: createIssue } = resourceHooks['issue'].useCreate();
 
   const form = useForm<CreateIssueForm>({
     resolver: zodResolver(createIssueSchema),
