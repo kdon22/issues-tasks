@@ -22,6 +22,15 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { EmojiPicker } from '@/components/ui/emoji-picker';
+import { 
+  useCreateComment, 
+  useUpdateComment, 
+  useDeleteComment, 
+  useListComments, 
+  useCreateReaction, 
+  useDeleteReaction 
+} from '@/lib/hooks';
+import { Comment, Reaction } from '@/lib/api/action-client';
 
 interface User {
   id: string;
@@ -29,24 +38,6 @@ interface User {
   email: string;
   avatarColor?: string | null;
   avatarType?: string | null;
-}
-
-interface Reaction {
-  id: string;
-  emoji: string;
-  count: number;
-  users: User[];
-  hasReacted: boolean;
-}
-
-interface Comment {
-  id: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  user: User;
-  reactions: Reaction[];
-  replies?: Comment[];
 }
 
 interface IssueCommentsProps {
@@ -125,7 +116,7 @@ function EmojiReactionBar({
               ? "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100" 
               : "bg-gray-50 border-gray-200 hover:bg-gray-100"
           )}
-          title={`${reaction.users.map(u => u.name || u.email).join(', ')}`}
+          title={`${(reaction.users || []).map(u => u.name || u.email).join(', ')}`}
         >
           <span className="mr-1">{reaction.emoji}</span>
           <span>{reaction.count}</span>
@@ -169,10 +160,26 @@ export function IssueComments({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const replyFormRef = useRef<HTMLDivElement>(null);
   
-  // Update local comments when prop changes
+  // Use the new action hooks
+  const { createComment } = useCreateComment();
+  const { updateComment } = useUpdateComment();
+  const { deleteComment } = useDeleteComment();
+  const { data: commentsData, refetch: refetchComments, isLoading } = useListComments(issueId);
+  const { createReaction } = useCreateReaction();
+  const { deleteReaction } = useDeleteReaction();
+  
+  // Update local comments when prop changes or when data is refetched
   useEffect(() => {
-    setLocalComments(comments || []);
-  }, [comments]);
+    if (commentsData && Array.isArray(commentsData)) {
+      setLocalComments(commentsData);
+      onCommentsChange?.(commentsData);
+    } else if (comments && Array.isArray(comments)) {
+      setLocalComments(comments);
+    } else {
+      // Ensure localComments is always an array
+      setLocalComments([]);
+    }
+  }, [comments, commentsData, onCommentsChange]);
 
   // Scroll to reply form when it opens
   useEffect(() => {
@@ -189,13 +196,7 @@ export function IssueComments({
 
   const refreshComments = async () => {
     try {
-      const response = await fetch(`/api/workspaces/${workspaceUrl}/issues/${issueId}/comments`);
-      if (response.ok) {
-        const data = await response.json();
-        const commentsArray = data.comments || [];
-        setLocalComments(commentsArray);
-        onCommentsChange?.(commentsArray);
-      }
+      await refetchComments();
     } catch (error) {
       console.error('Error refreshing comments:', error);
     }
@@ -206,19 +207,10 @@ export function IssueComments({
     
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/workspaces/${workspaceUrl}/issues/${issueId}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: newComment })
-      });
-
-      if (response.ok) {
-        setNewComment('');
-        await refreshComments();
-        toast.success('Comment added successfully');
-      } else {
-        toast.error('Failed to add comment');
-      }
+      await createComment(issueId, { content: newComment });
+      setNewComment('');
+      await refreshComments();
+      toast.success('Comment added successfully');
     } catch (error) {
       console.error('Error submitting comment:', error);
       toast.error('Failed to add comment');
@@ -232,23 +224,14 @@ export function IssueComments({
     
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/workspaces/${workspaceUrl}/issues/${issueId}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          content: replyContent,
-          parentId: commentId
-        })
+      await createComment(issueId, { 
+        content: replyContent,
+        parentId: commentId
       });
-
-      if (response.ok) {
-        setReplyTo(null);
-        setReplyContent('');
-        await refreshComments();
-        toast.success('Reply added successfully');
-      } else {
-        toast.error('Failed to add reply');
-      }
+      setReplyTo(null);
+      setReplyContent('');
+      await refreshComments();
+      toast.success('Reply added successfully');
     } catch (error) {
       console.error('Error submitting reply:', error);
       toast.error('Failed to add reply');
@@ -267,20 +250,11 @@ export function IssueComments({
     
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/workspaces/${workspaceUrl}/issues/${issueId}/comments/${commentId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: editContent })
-      });
-
-      if (response.ok) {
-        setEditingComment(null);
-        setEditContent('');
-        await refreshComments();
-        toast.success('Comment updated successfully');
-      } else {
-        toast.error('Failed to update comment');
-      }
+      await updateComment(commentId, { content: editContent });
+      setEditingComment(null);
+      setEditContent('');
+      await refreshComments();
+      toast.success('Comment updated successfully');
     } catch (error) {
       console.error('Error updating comment:', error);
       toast.error('Failed to update comment');
@@ -298,16 +272,9 @@ export function IssueComments({
     if (!confirm('Are you sure you want to delete this comment?')) return;
     
     try {
-      const response = await fetch(`/api/workspaces/${workspaceUrl}/issues/${issueId}/comments/${commentId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        await refreshComments();
-        toast.success('Comment deleted successfully');
-      } else {
-        toast.error('Failed to delete comment');
-      }
+      await deleteComment(commentId);
+      await refreshComments();
+      toast.success('Comment deleted successfully');
     } catch (error) {
       console.error('Error deleting comment:', error);
       toast.error('Failed to delete comment');
@@ -316,29 +283,15 @@ export function IssueComments({
 
   const handleReactionAdd = async (commentId: string, emoji: string) => {
     try {
-      const response = await fetch(`/api/workspaces/${workspaceUrl}/issues/${issueId}/comments/${commentId}/reactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emoji })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Update the local comment with new reactions (DRY helper)
-        updateCommentReactions(commentId, data.reactions);
-        
-        toast.success('Reaction toggled');
-      } else {
-        toast.error('Failed to toggle reaction');
-      }
+      await createReaction(commentId, emoji);
+      await refreshComments();
     } catch (error) {
-      console.error('Error toggling reaction:', error);
-      toast.error('Failed to toggle reaction');
+      console.error('Error adding reaction:', error);
+      toast.error('Failed to add reaction');
     }
   };
 
-  // DRY helper function to update comment reactions
+  // DRY helper function to update comment reactions (keeping for optimistic updates)
   const updateCommentReactions = (commentId: string, reactions: Reaction[]) => {
     setLocalComments(prevComments => 
       prevComments.map(comment => {
@@ -359,8 +312,20 @@ export function IssueComments({
   };
 
   const handleReactionRemove = async (commentId: string, emoji: string) => {
-    // Reactions are toggled through the same endpoint
-    await handleReactionAdd(commentId, emoji);
+    try {
+      // Find the reaction to delete
+      const comment = localComments.find(c => c.id === commentId) || 
+        localComments.flatMap(c => c.replies || []).find(r => r.id === commentId);
+      
+      const reaction = comment?.reactions?.find(r => r.emoji === emoji && r.hasReacted);
+      if (reaction) {
+        await deleteReaction(reaction.id);
+        await refreshComments();
+      }
+    } catch (error) {
+      console.error('Error removing reaction:', error);
+      toast.error('Failed to remove reaction');
+    }
   };
 
   const renderComment = (comment: Comment, level = 0) => {
@@ -445,9 +410,9 @@ export function IssueComments({
             <Avatar className="h-6 w-6 flex-shrink-0">
               <AvatarFallback 
                 className="text-xs"
-                style={{ backgroundColor: safeComment.user.avatarColor || '#6B7280' }}
+                style={{ backgroundColor: '#6B7280' }}
               >
-                {(safeComment.user.name || safeComment.user.email).charAt(0).toUpperCase()}
+                                      {(safeComment.user.name || safeComment.user.email).charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             
@@ -589,7 +554,7 @@ export function IssueComments({
 
       {/* Comments list */}
       <div className="space-y-6">
-        {!localComments || localComments.length === 0 ? (
+        {!localComments || !Array.isArray(localComments) || localComments.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-400" />
             <p>No comments yet. Be the first to comment!</p>

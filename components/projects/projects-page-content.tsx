@@ -37,7 +37,7 @@ export function ProjectsPageContent({ workspaceUrl }: ProjectsPageContentProps) 
               Create teams to organize your projects better.
             </p>
             <Button variant="outline" className="w-full" asChild>
-              <a href={`/workspace/${workspaceUrl}/settings/teams`}>
+              <a href={`/workspaces/${workspaceUrl}/settings/teams`}>
                 Manage Teams
               </a>
             </Button>

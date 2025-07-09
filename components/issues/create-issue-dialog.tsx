@@ -59,6 +59,7 @@ interface CreateIssueDialogProps {
 
 export function CreateIssueDialog({ open, onOpenChange }: CreateIssueDialogProps) {
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const createIssue = useCreateIssue();
 
   const form = useForm<CreateIssueForm>({
@@ -104,19 +105,41 @@ export function CreateIssueDialog({ open, onOpenChange }: CreateIssueDialogProps
   ];
 
   const onSubmit = async (data: CreateIssueForm) => {
+    setIsSubmitting(true);
     try {
-      createIssue.mutate({
+      const createdIssue = await createIssue({
         ...data,
         labels: selectedLabels,
         teamId: 'default-team', // This would come from context
         workspaceId: 'default-workspace' // This would come from context
-      });
-      toast.success('Issue created successfully!');
+      } as any);
+      
+      // Custom toast with clickable issue number
+      const issueIdentifier = (createdIssue as any)?.identifier || `#${(createdIssue as any)?.number}` || 'NEW';
+      const issueTitle = (createdIssue as any)?.title || data.title;
+      
+      toast.success(
+        <div className="flex items-center gap-2">
+          <span>Issue </span>
+          <button 
+            className="font-mono font-semibold text-blue-600 hover:text-blue-800 underline"
+            onClick={() => {
+              window.location.href = `/workspaces/default-workspace/issues/${createdIssue.id}`;
+            }}
+          >
+            {issueIdentifier}
+          </button>
+          <span> created: {issueTitle}</span>
+        </div>
+      );
+      
       onOpenChange(false);
       form.reset();
       setSelectedLabels([]);
     } catch (error) {
       toast.error('Failed to create issue');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -354,10 +377,10 @@ export function CreateIssueDialog({ open, onOpenChange }: CreateIssueDialogProps
               </Button>
               <Button
                 type="submit"
-                disabled={createIssue.isLoading}
+                disabled={isSubmitting}
                 className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
               >
-                {createIssue.isLoading ? (
+                {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Creating...

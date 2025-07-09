@@ -1,4 +1,4 @@
-// Data Table Component - Linear Clone (DRY & Reusable)
+// Data Table Component -  (DRY & Reusable)
 "use client";
 
 import React, { useState, useMemo } from 'react';

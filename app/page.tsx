@@ -1,5 +1,3 @@
-"use client";
-
 import { AppShell } from '@/components/layout/app-shell';
 import { Sidebar } from '@/components/layout/sidebar';
 import { PageLayout } from '@/components/layout/page-layout';
@@ -23,10 +21,10 @@ export default async function HomePage() {
     const workspaceUrl = await getUserLastAccessedWorkspace(session.user.id);
     
     if (workspaceUrl) {
-      redirect(`/workspace/${workspaceUrl}`);
+      redirect(`/workspaces/${workspaceUrl}`);
     } else {
       // User has no workspaces, redirect to a workspace selection or creation page
-      redirect('/workspace/create');
+      redirect('/workspaces/create');
     }
   }
   
@@ -36,7 +34,7 @@ export default async function HomePage() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center">
           <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            Linear Clone
+            Issues Tasks
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             The issue tracking tool you'll actually want to use. 

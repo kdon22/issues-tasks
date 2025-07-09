@@ -36,7 +36,6 @@ interface IssueType {
   id: string;
   name: string;
   icon?: string;
-  color: string;
 }
 
 interface Member {
@@ -253,7 +252,7 @@ export function IssuesFilters({
                   />
                   <Avatar className="h-6 w-6">
                     <AvatarFallback className="text-xs">
-                      {member.name.charAt(0).toUpperCase()}
+                                                    {member.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm">{member.name}</span>

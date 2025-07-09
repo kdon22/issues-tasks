@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { FileText, Bug, Zap, Target, AlertTriangle, Settings, CheckCircle, ChevronDown } from 'lucide-react';
+import { FileText, Bug, Zap, Target, AlertTriangle, Settings, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   Popover, 
@@ -26,7 +26,6 @@ interface IssueType {
   id: string;
   name: string;
   icon?: string | null;
-  color: string;
   description?: string | null;
 }
 
@@ -36,6 +35,7 @@ interface IssueTypePickerProps {
   onSelect: (issueType: IssueType) => void;
   placeholder?: string;
   className?: string;
+  showBorder?: boolean;
 }
 
 export function IssueTypePicker({ 
@@ -43,7 +43,8 @@ export function IssueTypePicker({
   selectedIssueType, 
   onSelect, 
   placeholder = "Select issue type",
-  className 
+  className,
+  showBorder = false
 }: IssueTypePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -58,33 +59,32 @@ export function IssueTypePicker({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={isOpen}
+          variant="ghost"
+          size="sm"
           className={cn(
-            "justify-between h-9 px-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors",
+            "h-7 px-2 gap-2 hover:bg-muted text-left justify-start font-normal bg-muted/50",
+            showBorder ? "border border-border/20" : "border-0",
             !selectedIssueType && "text-muted-foreground",
             className
           )}
         >
-          <div className="flex items-center gap-2">
-            {selectedIssueType ? (
-              <>
-                <div
-                  className="w-4 h-4 rounded-sm flex items-center justify-center"
-                  style={{ backgroundColor: selectedIssueType.color }}
-                >
-                  {React.createElement(selectedIcon, { 
-                    className: "w-3 h-3 text-white" 
-                  })}
-                </div>
-                <span className="text-sm font-medium">{selectedIssueType.name}</span>
-              </>
-            ) : (
-              <span className="text-sm">{placeholder}</span>
-            )}
-          </div>
-          <ChevronDown className="h-4 w-4 opacity-50" />
+          {selectedIssueType ? (
+            <>
+              <div className="w-4 h-4 rounded-sm flex items-center justify-center bg-muted">
+                {React.createElement(selectedIcon, { 
+                  className: "w-3 h-3 text-muted-foreground" 
+                })}
+              </div>
+              <span className="font-medium">{selectedIssueType.name}</span>
+            </>
+          ) : (
+            <>
+              <div className="w-4 h-4 rounded-sm flex items-center justify-center bg-muted">
+                <FileText className="w-3 h-3 text-muted-foreground" />
+              </div>
+              <span>{placeholder}</span>
+            </>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[280px] p-0" align="start">
@@ -104,18 +104,15 @@ export function IssueTypePicker({
                   setIsOpen(false);
                 }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-2 py-2 rounded-md text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
-                  isSelected && "bg-blue-50 dark:bg-blue-900/20"
+                  "w-full flex items-center gap-3 px-2 py-2 rounded-md text-left hover:bg-muted transition-colors",
+                  isSelected && "bg-accent"
                 )}
               >
-                <div
-                  className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: issueType.color }}
-                >
-                  <IconComponent className="w-4 h-4 text-white" />
+                <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 bg-muted">
+                  <IconComponent className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <div className="font-medium">
                     {issueType.name}
                   </div>
                   {issueType.description && (
@@ -154,12 +151,11 @@ export function IssueTypeIcon({ issueType, size = 'sm' }: { issueType: IssueType
   return (
     <div
       className={cn(
-        "rounded-sm flex items-center justify-center flex-shrink-0",
+        "rounded-sm flex items-center justify-center flex-shrink-0 bg-muted",
         containerSizeClasses[size]
       )}
-      style={{ backgroundColor: issueType.color }}
     >
-      <IconComponent className={cn("text-white", sizeClasses[size])} />
+      <IconComponent className={cn("text-muted-foreground", sizeClasses[size])} />
     </div>
   );
 } 

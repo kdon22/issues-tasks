@@ -1,4 +1,4 @@
-// Keyboard Shortcuts Hook - Linear Clone
+// Keyboard Shortcuts Hook - 
 "use client";
 
 import { useEffect } from 'react';

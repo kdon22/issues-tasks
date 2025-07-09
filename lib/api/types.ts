@@ -1,4 +1,4 @@
-// API Types - Linear Clone
+// API Types - 
 import { z } from 'zod';
 
 export interface ApiResponse<T = any> {

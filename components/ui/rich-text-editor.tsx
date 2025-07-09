@@ -287,7 +287,7 @@ export function RichTextEditor({
         `).run();
       }
     }
-    toast.success(`${files.length} file(s) added`);
+    
   }, [editor]);
 
   const setLink = useCallback(() => {

@@ -1,4 +1,4 @@
-// Utility Formatters - Linear Clone
+// Utility Formatters - 
 import { formatDistanceToNow, format } from 'date-fns';
 
 export const formatDate = (date: Date | string): string => {

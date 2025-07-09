@@ -62,7 +62,7 @@ export function WorkspaceSwitcher() {
 
   const handleWorkspaceChange = (workspace: Workspace) => {
     // Navigate to the new workspace
-    window.location.href = `/workspace/${workspace.url}`;
+          window.location.href = `/workspaces/${workspace.url}`;
   };
 
   const handleInstanceSwitch = (instance: Instance) => {
@@ -75,7 +75,7 @@ export function WorkspaceSwitcher() {
   // Build workspace-aware URLs
   const getWorkspaceUrl = (path: string) => {
     if (workspaceUrl) {
-      return `/workspace/${workspaceUrl}${path}`;
+      return `/workspaces/${workspaceUrl}${path}`;
     }
     return path; // Fallback to old URLs if no workspace context
   };
@@ -276,7 +276,7 @@ export function WorkspaceSwitcher() {
         
         {/* Create Workspace */}
         <div className="p-1">
-          <Link href="/workspace/create">
+          <Link href="/workspaces/create">
             <DropdownMenuItem className="cursor-pointer p-3 focus:bg-slate-50 dark:focus:bg-slate-800">
               <Plus className="w-4 h-4 mr-3 text-slate-500 dark:text-slate-400" />
               <div className="flex-1">

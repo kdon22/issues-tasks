@@ -1,4 +1,4 @@
-// Query Provider - Linear Clone
+// Query Provider - 
 'use client';
 
 import { QueryClientProvider } from '@tanstack/react-query';

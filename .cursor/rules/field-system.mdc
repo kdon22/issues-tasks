@@ -1,0 +1,288 @@
+# Field System - Action-Based with Linear UI Design
+
+## 🚀 Field System Overview
+
+This codebase uses a **configuration-driven field system** with Linear's beautifully compact UI design, providing clean form experiences with real-time validation and smart field rendering through the ResourceSettingsPage component.
+
+## 📁 Architecture
+
+### Core Field Components
+```
+components/settings/
+└── resource-settings-page.tsx  # All field rendering and validation
+
+components/ui/
+├── form.tsx                     # Form component primitives
+├── input.tsx                    # Input components
+├── select.tsx                   # Select components
+├── textarea.tsx                 # Textarea components
+├── switch.tsx                   # Switch components
+├── color-picker.tsx             # Color picker component
+└── icon-picker.tsx              # Icon picker component
+```
+
+### Field Types Available
+```typescript
+// Supported field types in ResourceSettingsPage configs
+type FieldType = 
+  | 'text' | 'email' | 'url' | 'textarea'     // Text inputs
+  | 'number'                                  // Number input
+  | 'switch'                                  // Toggle switch
+  | 'select' | 'multiSelect'                  // Dropdown selections
+  | 'date'                                    // Date picker
+  | 'color'                                   // Color picker
+  | 'icon' | 'avatar';                        // Icon/avatar pickers
+```
+
+## 🔧 How to Define Fields
+
+### Basic Field Structure
+```typescript
+// In ResourceSettingsPage config
+createFields: [
+  {
+    key: 'name',
+    label: 'Team Name',
+    type: 'text',
+    required: true,
+    placeholder: 'e.g. Engineering Team'
+  },
+  {
+    key: 'description',
+    label: 'Description',
+    type: 'textarea',
+    required: false,
+    placeholder: 'Brief description...'
+  }
+]
+```
+
+### Advanced Field Examples
+
+#### Select Field with Options
+```typescript
+{
+  key: 'status',
+  label: 'Status',
+  type: 'select',
+  required: true,
+  options: [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'INACTIVE', label: 'Inactive' },
+    { value: 'PENDING', label: 'Pending' }
+  ]
+}
+```
+
+#### Color Field
+```typescript
+{
+  key: 'color',
+  label: 'Color',
+  type: 'color',
+  required: true,
+  options: [
+    { value: '#EF4444', label: 'Red' },
+    { value: '#3B82F6', label: 'Blue' },
+    { value: '#22C55E', label: 'Green' },
+    { value: '#8B5CF6', label: 'Purple' },
+    { value: '#F59E0B', label: 'Orange' }
+  ]
+}
+```
+
+#### Icon Field
+```typescript
+{
+  key: 'icon',
+  label: 'Icon',
+  type: 'icon',
+  required: false,
+  options: [
+    { value: 'Users', label: 'Users' },
+    { value: 'Settings', label: 'Settings' },
+    { value: 'Folder', label: 'Folder' },
+    { value: 'Star', label: 'Star' }
+  ]
+}
+```
+
+#### Switch Field
+```typescript
+{
+  key: 'enabled',
+  label: 'Enabled',
+  type: 'switch',
+  required: false
+}
+```
+
+## 🎯 Validation System
+
+### Built-in Validation
+The ResourceSettingsPage component provides built-in validation:
+- **Required fields**: Automatically validated
+- **Email fields**: Format validation
+- **URL fields**: URL format validation
+- **Number fields**: Numeric validation
+
+### Custom Validation
+```typescript
+// In your settings page component
+const handleSubmit = async (data: any) => {
+  // Custom validation
+  if (!data.name?.trim()) {
+    toast.error('Name is required');
+    return;
+  }
+  
+  if (data.name.length < 2) {
+    toast.error('Name must be at least 2 characters');
+    return;
+  }
+  
+  // Continue with submission...
+};
+```
+
+## 🎨 Linear UI Design Patterns
+
+### Core Design Principles
+- **Beautifully Compact**: Minimal whitespace, tight field grouping
+- **Clean Minimalist**: No unnecessary decorations or borders
+- **Black Buttons**: Use black buttons instead of blue
+- **No Chevrons**: Clean dropdown styling without chevron icons
+- **Global Font Sizes**: Use default font sizes from globals.css
+
+### Field Configuration Best Practices
+```typescript
+createFields: [
+  // Good: Concise labels
+  { key: 'name', label: 'Name', type: 'text' },
+  
+  // Good: Descriptive placeholders
+  { key: 'email', label: 'Email', type: 'email', placeholder: 'user@example.com' },
+  
+  // Good: Clear options
+  { 
+    key: 'role', 
+    label: 'Role', 
+    type: 'select',
+    options: [
+      { value: 'ADMIN', label: 'Admin' },
+      { value: 'MEMBER', label: 'Member' }
+    ]
+  }
+]
+```
+
+## ⚠️ Important Patterns
+
+### DO:
+- Use Linear's compact UI design principles
+- Provide clear, concise field labels
+- Use descriptive placeholders
+- Follow the existing styling patterns
+- Use black buttons instead of blue
+- Leverage global font sizes from globals.css
+
+### DON'T:
+- Add unnecessary whitespace or padding
+- Use generic card styling
+- Override default font sizes
+- Add chevron icons to dropdowns
+- Deviate from the project's styling patterns
+
+## 🔧 Complete Field Examples
+
+### Team Settings Configuration
+```typescript
+createFields: [
+  { key: 'name', label: 'Team Name', type: 'text', required: true },
+  { key: 'identifier', label: 'Identifier', type: 'text', required: true },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { 
+    key: 'icon', 
+    label: 'Icon', 
+    type: 'icon',
+    options: [
+      { value: 'Users', label: 'Users' },
+      { value: 'Settings', label: 'Settings' },
+      { value: 'Folder', label: 'Folder' }
+    ]
+  }
+]
+```
+
+### Label Settings Configuration
+```typescript
+createFields: [
+  { key: 'name', label: 'Label Name', type: 'text', required: true },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { 
+    key: 'color', 
+    label: 'Color', 
+    type: 'color', 
+    required: true,
+    options: [
+      { value: '#EF4444', label: 'Red' },
+      { value: '#3B82F6', label: 'Blue' },
+      { value: '#22C55E', label: 'Green' }
+    ]
+  }
+]
+```
+
+### Project Settings Configuration
+```typescript
+createFields: [
+  { key: 'name', label: 'Project Name', type: 'text', required: true },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { 
+    key: 'status', 
+    label: 'Status', 
+    type: 'select', 
+    required: true,
+    options: [
+      { value: 'ACTIVE', label: 'Active' },
+      { value: 'INACTIVE', label: 'Inactive' },
+      { value: 'COMPLETED', label: 'Completed' }
+    ]
+  }
+]
+```
+
+## 🚀 Advanced Features
+
+### Conditional Fields
+```typescript
+// Show different fields based on values
+const createFields = useMemo(() => {
+  const baseFields = [
+    { key: 'name', label: 'Name', type: 'text', required: true }
+  ];
+  
+  if (selectedType === 'PROJECT') {
+    baseFields.push({
+      key: 'deadline',
+      label: 'Deadline',
+      type: 'date'
+    });
+  }
+  
+  return baseFields;
+}, [selectedType]);
+```
+
+### Field Dependencies
+```typescript
+// Update field options based on other fields
+const teamOptions = useMemo(() => {
+  return teams.map(team => ({
+    value: team.id,
+    label: team.name
+  }));
+}, [teams]);
+```
+
+This field system provides Linear-quality forms with beautifully compact design and zero configuration overhead.

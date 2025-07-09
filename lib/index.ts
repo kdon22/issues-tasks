@@ -1,4 +1,4 @@
-// Library Exports - Linear Clone
+// Library Exports - 
 // Keep utility imports clean and DRY
 
 export * from './utils';

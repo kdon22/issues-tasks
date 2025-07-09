@@ -1,4 +1,4 @@
-// Design System Constants - Linear Clone
+// Design System Constants - 
 export const SIZES = {
   xs: '0.75rem',
   sm: '0.875rem', 

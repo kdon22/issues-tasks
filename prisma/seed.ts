@@ -1,4 +1,4 @@
-// Seed data for Linear Clone
+// Seed data for 
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -91,11 +91,11 @@ async function main() {
 
   // Create default instance for multi-tenant SaaS architecture 🏗️
   const instance = await prisma.instance.upsert({
-    where: { slug: 'linear-clone' },
+    where: { slug: 'issuestasks' },
     update: {},
     create: {
-      name: 'Linear Clone Demo',
-      slug: 'linear-clone',
+      name: 'Issues Tasks Demo',
+      slug: 'issuestasks',
       domain: 'localhost:3000',
       status: 'ACTIVE',
       config: {},
@@ -391,6 +391,60 @@ async function main() {
 
   console.log('✅ Created states');
 
+  // Create default field set
+  const defaultFieldSet = await prisma.fieldSet.upsert({
+    where: {
+      workspaceId_name: {
+        workspaceId: workspace.id,
+        name: 'Standard',
+      },
+    },
+    update: {},
+    create: {
+      name: 'Standard',
+      description: 'Standard fields for most issues',
+      workspaceId: workspace.id,
+      isDefault: true,
+    },
+  });
+
+  // Create field set configurations for the default field set
+  const fieldConfigurations = [
+    { fieldKey: 'title', isRequired: true, isVisible: true, showOnSubtask: true, showOnNewIssue: true, displayOrder: 0 },
+    { fieldKey: 'description', isRequired: false, isVisible: true, showOnSubtask: true, showOnNewIssue: true, displayOrder: 1 },
+    { fieldKey: 'state', isRequired: true, isVisible: true, showOnSubtask: true, showOnNewIssue: true, displayOrder: 2 },
+    { fieldKey: 'priority', isRequired: false, isVisible: true, showOnSubtask: false, showOnNewIssue: true, displayOrder: 3 },
+    { fieldKey: 'assignee', isRequired: false, isVisible: true, showOnSubtask: true, showOnNewIssue: true, displayOrder: 4 },
+    { fieldKey: 'team', isRequired: true, isVisible: true, showOnSubtask: false, showOnNewIssue: true, displayOrder: 5 },
+    { fieldKey: 'labels', isRequired: false, isVisible: true, showOnSubtask: false, showOnNewIssue: true, displayOrder: 6 },
+    { fieldKey: 'dueDate', isRequired: false, isVisible: true, showOnSubtask: true, showOnNewIssue: false, displayOrder: 7 }
+  ];
+
+  for (const config of fieldConfigurations) {
+    await prisma.fieldSetConfiguration.upsert({
+      where: {
+        fieldSetId_fieldKey_context: {
+          fieldSetId: defaultFieldSet.id,
+          fieldKey: config.fieldKey,
+          context: 'create',
+        },
+      },
+      update: {},
+      create: {
+        fieldSetId: defaultFieldSet.id,
+        fieldKey: config.fieldKey,
+        isRequired: config.isRequired,
+        isVisible: config.isVisible,
+        showOnSubtask: config.showOnSubtask,
+        showOnNewIssue: config.showOnNewIssue,
+        displayOrder: config.displayOrder,
+        context: 'create',
+      },
+    });
+  }
+
+  console.log('✅ Created default field set');
+
   // Create issue types that reference the status flows
   const taskIssueType = await prisma.issueType.upsert({
     where: {
@@ -403,8 +457,7 @@ async function main() {
     create: {
       name: 'Task',
       description: 'General task or work item',
-      icon: 'check-square',
-      color: '#8B5CF6',
+      icon: 'Check',
       workspaceId: workspace.id,
       statusFlowId: defaultStatusFlow.id,
       isDefault: true,
@@ -422,8 +475,7 @@ async function main() {
     create: {
       name: 'Bug',
       description: 'Something that is broken and needs fixing',
-      icon: 'bug',
-      color: '#EF4444',
+      icon: 'AlertCircle',
       workspaceId: workspace.id,
       statusFlowId: bugStatusFlow.id,
       isDefault: false,

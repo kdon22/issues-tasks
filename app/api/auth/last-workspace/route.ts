@@ -1,4 +1,4 @@
-// Last Workspace API - Linear Clone
+// Last Workspace API - 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getUserLastAccessedWorkspace } from '@/lib/auth-utils';

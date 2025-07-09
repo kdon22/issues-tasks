@@ -1,4 +1,4 @@
-// State Badge Component - Linear Clone
+// State Badge Component - 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { STATE_COLORS } from '@/lib/constants';

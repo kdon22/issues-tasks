@@ -1,4 +1,4 @@
-// Current Workspace Hook - Linear Clone
+// Current Workspace Hook - 
 "use client";
 
 import { useQuery } from '@tanstack/react-query';

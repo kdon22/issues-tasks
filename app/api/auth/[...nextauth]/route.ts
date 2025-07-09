@@ -1,4 +1,4 @@
-// NextAuth API Route - Linear Clone
+// NextAuth API Route - 
 import { handlers } from "@/lib/auth";
 
 export const { GET, POST } = handlers; 

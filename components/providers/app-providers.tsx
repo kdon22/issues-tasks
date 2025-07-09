@@ -1,25 +1,23 @@
-// App Providers - Linear Clone (All State Management)
+// App Providers - (All State Management)
 'use client';
 
-import { QueryProvider } from './query-provider';
 import { SessionProvider } from 'next-auth/react';
-import { Toaster } from 'sonner';
+import { QueryProvider } from './query-provider';
+import { CacheProvider } from './cache-provider';
 
-interface AppProvidersProps {
+export function AppProviders({
+  children,
+  session,
+}: {
   children: React.ReactNode;
-}
-
-export function AppProviders({ children }: AppProvidersProps) {
+  session: any;
+}) {
   return (
-    <SessionProvider>
+    <SessionProvider session={session}>
       <QueryProvider>
-        {children}
-        <Toaster 
-          position="top-right"
-          richColors
-          expand
-          closeButton
-        />
+        <CacheProvider>
+          {children}
+        </CacheProvider>
       </QueryProvider>
     </SessionProvider>
   );

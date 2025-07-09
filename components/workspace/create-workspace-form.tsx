@@ -1,4 +1,4 @@
-// Create Workspace Form - Linear Clone
+// Create Workspace Form - 
 "use client";
 
 import { useState } from 'react';
@@ -21,7 +21,7 @@ export function CreateWorkspaceForm() {
     setError(null);
 
     try {
-      const response = await fetch('/api/workspace', {
+      const response = await fetch('/api/workspaces', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -34,7 +34,7 @@ export function CreateWorkspaceForm() {
 
       if (response.ok) {
         const data = await response.json();
-        router.push(`/workspace/${data.workspace.url}`);
+        router.push(`/workspaces/${data.workspace.url}`);
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to create workspace');

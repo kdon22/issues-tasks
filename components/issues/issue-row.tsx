@@ -1,4 +1,4 @@
-// Issue Row Component - Linear Clone
+// Issue Row Component - 
 "use client";
 
 import { useState } from 'react';
@@ -114,7 +114,7 @@ export function IssueRow({
   return (
     <div 
       className={cn(
-        "flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors cursor-pointer group",
+        "flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer group",
         !isLast && "border-b border-gray-100"
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -123,8 +123,8 @@ export function IssueRow({
       {/* Issue Identifier */}
       <div className="flex-shrink-0 w-20">
         <Link 
-          href={`/workspace/${workspaceUrl}/issues/${issue.id}`}
-          className="text-sm font-mono text-gray-500 hover:text-gray-700 transition-colors"
+          href={`/workspaces/${workspaceUrl}/issues/${issue.id}`}
+          className="text-sm font-mono text-gray-500 hover:text-gray-700"
         >
           {issue.identifier}
         </Link>
@@ -146,8 +146,8 @@ export function IssueRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <Link 
-            href={`/workspace/${workspaceUrl}/issues/${issue.id}`}
-            className="text-sm font-medium text-gray-900 hover:text-gray-700 transition-colors truncate"
+            href={`/workspaces/${workspaceUrl}/issues/${issue.id}`}
+            className="text-sm font-medium text-gray-900 hover:text-gray-700 truncate"
           >
             {issue.title}
           </Link>
@@ -225,7 +225,7 @@ export function IssueRow({
           <div className="flex items-center gap-2">
             <Avatar className="h-6 w-6">
               <AvatarFallback className="text-xs">
-                {(issue.assignee.name || issue.assignee.email).charAt(0).toUpperCase()}
+                                      {(issue.assignee.name || issue.assignee.email).charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <span className="text-sm text-gray-600 hidden md:block">
@@ -257,7 +257,7 @@ export function IssueRow({
               variant="ghost"
               size="sm"
               className={cn(
-                "h-6 w-6 p-0 transition-opacity",
+                "h-6 w-6 p-0",
                 isHovered ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               )}
             >

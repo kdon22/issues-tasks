@@ -12,5 +12,8 @@ export { IssueDetailHeader } from './issue-detail-header';
 export { IssueTitle } from './issue-title';
 export { IssueDescription } from './issue-description';
 export { IssueTypePicker, IssueTypeIcon } from './issue-type-picker';
+
+export { TeamSelector } from './team-selector';
+export { StatusSelector } from './status-selector';
 export { CreateSubtaskDialog } from './create-subtask-dialog';
 export { IssueSubTasks } from './issue-subtasks'; 

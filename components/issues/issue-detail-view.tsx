@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatDistance } from 'date-fns';
 import { Tag, Plus } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -16,6 +16,7 @@ import { IssueFieldsBar } from './issue-fields-bar';
 import { IssueTitle } from './issue-title';
 import { IssueDescription } from './issue-description';
 import { cn } from '@/lib/utils';
+import { useUpdateIssue } from '@/lib/hooks';
 
 interface User {
   id: string;
@@ -65,6 +66,7 @@ interface IssueType {
   id: string;
   name: string;
   icon?: string | null;
+  fieldSetId?: string | null;
 }
 
 interface Comment {
@@ -149,6 +151,7 @@ interface Issue {
     attachments: number;
     children: number;
   };
+  fieldConfigurations?: any[]; // Added for field configurations
 }
 
 interface Workspace {
@@ -185,23 +188,80 @@ export function IssueDetailView({
 }: IssueDetailViewProps) {
   const [activeTab, setActiveTab] = useState('comments');
   const [showSubtasksInterface, setShowSubtasksInterface] = useState(false);
+  const [autoStartSubtaskCreation, setAutoStartSubtaskCreation] = useState(false);
+  
+  // Use the new action-based hook for updating issues
+  const { updateIssue } = useUpdateIssue();
+  
+  // Field configurations are now provided via the unified issue loader
+  // No need for client-side fetching
 
   const isOverdue = issue.dueDate && new Date(issue.dueDate) < new Date();
 
-  // Placeholder handlers for IssueFieldsBar
-  const handleAssigneeChange = () => {
-    // TODO: Implement assignee change
+  // Field configurations are now part of the prefetched issue data
+  // If not available, fallback to empty array for graceful degradation
+  const fieldConfigurations = issue.fieldConfigurations || [];
+
+  // Issue field change handlers
+  const handleAssigneeChange = async () => {
+    // TODO: Implement assignee picker popup
     console.log('Change assignee:', issue.id);
+    // For now, just show a placeholder
+    const newAssigneeId = window.prompt('Enter new assignee ID (or leave empty to unassign):');
+    if (newAssigneeId !== null) {
+      try {
+        // Use the new action-based system
+        await updateIssue(issue.id, {
+          assigneeId: newAssigneeId || null,
+        });
+        console.log('Assignee updated successfully');
+        // Force re-render by updating a state
+        setActiveTab(activeTab);
+      } catch (error) {
+        console.error('Failed to update assignee:', error);
+      }
+    }
   };
 
-  const handleStatusChange = () => {
-    // TODO: Implement status change
+  const handleStatusChange = async () => {
+    // TODO: Implement status picker popup
     console.log('Change status:', issue.id);
+    // For now, just show a placeholder
+    const newStateId = window.prompt('Enter new state ID:');
+    if (newStateId) {
+      try {
+        // Use the new action-based system
+        await updateIssue(issue.id, {
+          stateId: newStateId,
+        });
+        console.log('Status updated successfully');
+        // Force re-render by updating a state
+        setActiveTab(activeTab);
+      } catch (error) {
+        console.error('Failed to update status:', error);
+      }
+    }
   };
 
-  const handlePriorityChange = () => {
-    // TODO: Implement priority change
+  const handlePriorityChange = async () => {
+    // TODO: Implement priority picker popup
     console.log('Change priority:', issue.id);
+    // For now, just show a placeholder
+    const priorities = ['NO_PRIORITY', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+    const newPriority = window.prompt(`Enter new priority (${priorities.join(', ')}):`, issue.priority);
+    if (newPriority && priorities.includes(newPriority.toUpperCase())) {
+      try {
+        // Use the new action-based system
+        await updateIssue(issue.id, {
+          priority: newPriority.toUpperCase(),
+        });
+        console.log('Priority updated successfully');
+        // Force re-render by updating a state
+        setActiveTab(activeTab);
+      } catch (error) {
+        console.error('Failed to update priority:', error);
+      }
+    }
   };
 
   return (
@@ -215,22 +275,11 @@ export function IssueDetailView({
                 title={issue.title}
                 onTitleChange={async (newTitle: string) => {
                   try {
-                    const response = await fetch(`/api/workspaces/${workspace.url}/issues/${issue.id}`, {
-                      method: 'PUT',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        title: newTitle,
-                      }),
+                    // Use the new action-based system
+                    await updateIssue(issue.id, {
+                      title: newTitle,
                     });
-
-                    if (!response.ok) {
-                      throw new Error('Failed to update title');
-                    }
-
-                    const result = await response.json();
-                    console.log('Title updated successfully:', result);
+                    console.log('Title updated successfully');
                   } catch (error) {
                     console.error('Error updating title:', error);
                     throw error; // Re-throw so the auto-save hook can handle it
@@ -282,22 +331,11 @@ export function IssueDetailView({
                 description={issue.description}
                 onDescriptionChange={async (newDescription: string) => {
                   try {
-                    const response = await fetch(`/api/workspaces/${workspace.url}/issues/${issue.id}`, {
-                      method: 'PUT',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        description: newDescription,
-                      }),
+                    // Use the new action-based system instead of direct fetch
+                    await updateIssue(issue.id, {
+                      description: newDescription,
                     });
-
-                    if (!response.ok) {
-                      throw new Error('Failed to update description');
-                    }
-
-                    const result = await response.json();
-                    console.log('Description updated successfully:', result);
+                    console.log('Description updated successfully');
                   } catch (error) {
                     console.error('Error updating description:', error);
                     throw error; // Re-throw so the auto-save hook can handle it
@@ -328,11 +366,14 @@ export function IssueDetailView({
                     email: m.user.email
                   }))}
                   projects={projects}
+                  fieldConfigurations={fieldConfigurations}
                   onSubtaskCreated={(newSubtask: SubTask) => {
                     // Add the new subtask to the issue children
                     issue.children.push(newSubtask);
                     // Update the count
                     issue._count.children += 1;
+                    // Reset the auto-start flag
+                    setAutoStartSubtaskCreation(false);
                   }}
                   onSubtaskUpdated={(updatedSubtask: SubTask) => {
                     // Update the subtask in the issue children
@@ -342,7 +383,11 @@ export function IssueDetailView({
                     }
                   }}
                   onCreateSubtaskClick={() => setShowSubtasksInterface(true)}
-                  onHideInterface={() => setShowSubtasksInterface(false)}
+                  onHideInterface={() => {
+                    setShowSubtasksInterface(false);
+                    setAutoStartSubtaskCreation(false);
+                  }}
+                  autoStartCreation={autoStartSubtaskCreation}
                 />
               </div>
             ) : (
@@ -350,7 +395,11 @@ export function IssueDetailView({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowSubtasksInterface(true)}
+                  onClick={() => {
+                    // Create a new subtask directly instead of showing the interface first
+                    setShowSubtasksInterface(true);
+                    setAutoStartSubtaskCreation(true);
+                  }}
                   className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 h-8 px-3 text-sm"
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -427,6 +476,7 @@ export function IssueDetailView({
         {/* Fields Bar - fixed width with independent scrolling */}
         <IssueFieldsBar
           issue={issue}
+          fieldConfigurations={fieldConfigurations}
           onAssigneeChange={handleAssigneeChange}
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}

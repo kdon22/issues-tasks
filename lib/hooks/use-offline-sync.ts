@@ -27,7 +27,7 @@ interface ConflictResolution {
 
 // IndexedDB for offline storage
 class OfflineSyncStorage {
-  private dbName = 'linear-clone-sync';
+  private dbName = 'issuestasks-sync';
   private version = 1;
   private db: IDBDatabase | null = null;
 
@@ -303,7 +303,7 @@ export function useOfflineSync(options: {
     errors: []
   });
 
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const conflictResolutionRef = useRef(conflictResolution);
 
   // Update conflict resolution
@@ -398,11 +398,13 @@ export function useOfflineSync(options: {
   }, []);
 
   // Force sync now
-  const syncNow = useCallback(async () => {
+  const syncNow = useCallback(async (options: { showToast?: boolean } = {}) => {
     if (!navigator.onLine) {
       toast.error('Cannot sync while offline');
       return;
     }
+
+    const { showToast = true } = options; // Default to true for manual sync calls
 
     setState(prev => ({ ...prev, isSyncing: true }));
     
@@ -413,7 +415,11 @@ export function useOfflineSync(options: {
         isSyncing: false, 
         lastSync: new Date() 
       }));
-      toast.success('Sync completed successfully');
+      
+      // Only show success toast if explicitly requested
+      if (showToast) {
+  
+      }
     } catch (error) {
       setState(prev => ({ ...prev, isSyncing: false }));
       toast.error('Sync failed. Will retry automatically.');

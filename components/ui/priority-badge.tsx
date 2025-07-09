@@ -1,4 +1,4 @@
-// Priority Badge Component - Linear Clone
+// Priority Badge Component - 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { PRIORITY_COLORS } from '@/lib/constants';

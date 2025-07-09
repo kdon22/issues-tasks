@@ -1,4 +1,4 @@
-// App Store - Linear Clone (DRY Client State Management)
+// App Store -  (DRY Client State Management)
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
@@ -182,7 +182,7 @@ export const useAppStore = create<AppState>()(
         },
       })),
       {
-        name: 'linear-clone-store',
+        name: 'issuestasks-store',
         // Only persist certain parts of the state
         partialize: (state) => ({
           user: state.user,
@@ -216,7 +216,7 @@ export const useAppStore = create<AppState>()(
         },
       }
     ),
-    { name: 'linear-clone-store' }
+    { name: 'issuestasks-store' }
   )
 );
 

@@ -10,7 +10,7 @@ export default async function SignInPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground">
-            Linear Clone
+            Issues Tasks
           </h1>
           <p className="text-muted-foreground mt-2">
             Welcome back! Please sign in to continue.

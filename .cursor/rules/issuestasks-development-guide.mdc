@@ -1,0 +1,292 @@
+# Linear Clone Development Guide
+
+This is an **Issue tracking site** built with **Next.js 14**, **TypeScript**, **Prisma**, and **shadcn/ui**. Our core principles are **DRY (Don't Repeat Yourself)**, **offline-first architecture**, and **Linear's beautifully compact UI design**.
+
+## 🎯 Core Development Principles
+
+### 1. **DRY First - Think Before You Build**
+- **ALWAYS** analyze if there's a DRY way before writing any code
+- Check existing patterns and hooks before creating new ones
+- Look for opportunities to eliminate repetitive code (aim for 70%+ reduction)
+- Use our established ResourceSettingsPage and action-based hooks
+
+### 2. **Offline-First Strategy (Required)**
+- Every feature MUST work offline
+- Use IndexedDB for local storage and caching
+- Implement background sync with retry logic
+- Show sync status and pending operations to users
+- Handle conflicts gracefully with resolution strategies
+
+### 3. **Linear's Compact UI Design**
+- Beautifully compact interface with minimal whitespace
+- Tight field grouping without unnecessary padding
+- Black buttons instead of blue (user preference)
+- No chevron icons on dropdowns
+- Clean minimalist styling
+- Use global font sizes from globals.css
+
+## 📁 File & Naming Conventions
+
+### File Naming
+- **kebab-case** for all files: `use-action-api.ts`, `mobile-responsive.tsx`
+- **PascalCase** for React components: `MobileHeader`, `SwipeCard`
+- **camelCase** for functions and variables: `useTeams`, `handleSubmit`
+
+### Folder Structure
+```
+components/ui/          # Reusable UI components (CHECK HERE FIRST!)
+components/settings/    # ResourceSettingsPage (DRY pattern)
+lib/hooks/             # Action-based hooks (useTeams, useProjects, etc.)
+lib/api/               # Single action endpoint + client
+app/                   # Next.js app router pages
+```
+
+## 🔧 Established Architecture Patterns
+
+### Core Hooks (USE THESE!)
+
+#### **Action-Based Resource Hooks** ([use-action-api.ts](mdc:lib/hooks/use-action-api.ts))
+- Offline-first API calls with IndexedDB caching
+- Automatic retry logic and error handling
+- Network status monitoring
+- Optimistic updates with automatic rollback
+
+```typescript
+// Query hooks
+const { data: teams, isLoading, error } = useTeams();
+const { data: projects, isLoading, error } = useProjects();
+
+// Mutation hooks
+const { createTeam, isPending } = useCreateTeam();
+const { updateProject, isPending } = useUpdateProject();
+```
+
+#### **useOfflineStatus Hook** ([use-action-api.ts](mdc:lib/hooks/use-action-api.ts))
+- Background sync with priority queues
+- Conflict resolution strategies
+- Sync status monitoring
+```typescript
+const { isOffline, pendingCount } = useOfflineStatus();
+```
+
+### ResourceSettingsPage Component ([resource-settings-page.tsx](mdc:components/settings/resource-settings-page.tsx))
+
+**ALWAYS use this for settings pages - it's the DRY pattern:**
+
+```typescript
+<ResourceSettingsPage
+  config={{
+    name: 'Team',
+    actionPrefix: 'team',
+    displayFields: ['name', 'identifier', 'description'],
+    searchFields: ['name', 'identifier', 'description'],
+    createFields: [
+      { key: 'name', label: 'Team Name', type: 'text', required: true },
+      { key: 'identifier', label: 'Identifier', type: 'text', required: true },
+      { key: 'description', label: 'Description', type: 'textarea' }
+    ]
+  }}
+  title="Teams"
+  description="Manage teams in your workspace"
+/>
+```
+
+### Mobile-Responsive Components ([mobile-responsive.tsx](mdc:components/ui/mobile-responsive.tsx))
+
+**ALWAYS use these for mobile-optimized experiences:**
+
+- **MobileHeader**: Headers with back navigation, sync status, offline indicators
+- **MobileList**: Pull-to-refresh, search, infinite scroll patterns
+- **SwipeCard**: Left/right swipe actions (edit/delete)
+- **MobileForm**: Full-screen forms with sticky bottom actions
+- **MobileBottomSheet**: Native bottom sheet with snap points
+- **MobileFAB**: Floating action buttons
+- **useIsMobile()**: Viewport detection hook
+- **useTouchGestures()**: Custom touch gesture handling
+
+## 🎨 UI Component Guidelines
+
+### Before Building ANY Component:
+1. **CHECK** [components/ui](mdc:components/ui) directory first
+2. **REUSE** existing shadcn/ui components: Button, Input, Card, etc.
+3. **EXTEND** rather than rebuild from scratch
+4. **COMPOSE** mobile-responsive wrappers around base components
+
+### Component Patterns
+```typescript
+// ✅ GOOD: Use established patterns
+const { data: teams, isLoading } = useTeams();
+const { createTeam } = useCreateTeam();
+
+// ✅ GOOD: Use ResourceSettingsPage for settings
+<ResourceSettingsPage config={TEAM_CONFIG} />
+
+// ❌ BAD: Reinventing CRUD logic
+const [data, setData] = useState([]);
+const [loading, setLoading] = useState(false);
+// ... 50+ lines of boilerplate
+```
+
+## 🚀 API & Data Patterns
+
+### API Structure
+- **Single action endpoint**: `/api/workspaces/[workspaceUrl]/actions`
+- **Action format**: `{ action: 'team.create', data: {...} }`
+- **Ultra-fast responses**: Sub-millisecond performance
+- **Consistent error handling**: Unified error responses
+
+### Database (Prisma)
+- Schema in [prisma/schema.prisma](mdc:prisma/schema.prisma)
+- Use Prisma Client for all database operations
+- Handle database connections properly in API routes
+
+### State Management
+- **Action-based hooks** for all data operations
+- **TanStack React Query** for server state with caching
+- **IndexedDB** for offline persistence
+- **NO** Redux/Zustand unless absolutely necessary
+
+## 📱 Mobile UX Requirements
+
+### Touch Interactions
+- **Swipe gestures**: Edit (left), Delete (right)
+- **Pull-to-refresh**: All list views
+- **Touch feedback**: Active states on all interactive elements
+- **Long press**: Context menus and secondary actions
+
+### Responsive Design
+```typescript
+const isMobile = useIsMobile(); // Use this hook
+// Conditional rendering based on viewport
+{isMobile ? <MobileComponent /> : <DesktopComponent />}
+```
+
+### Navigation
+- **Mobile**: Bottom navigation, floating actions, bottom sheets
+- **Desktop**: Sidebar navigation, modals, dropdowns
+
+## 🔄 Offline-First Implementation
+
+### Required for Every Feature:
+1. **Cache Strategy**: IndexedDB with automatic sync
+2. **Queue Operations**: POST/PUT/DELETE when offline
+3. **Background Sync**: Auto-sync when online
+4. **User Feedback**: Show sync status, pending count
+5. **Conflict Resolution**: Handle server conflicts gracefully
+
+### Sync Priority Levels:
+- **High**: User-initiated actions (create, update)
+- **Medium**: Bulk operations
+- **Low**: Background cleanup
+
+## 🎯 Performance Guidelines
+
+### Loading States
+- **Optimistic updates** for instant feedback
+- **Skeleton loaders** for initial loads
+- **Progressive loading** for large datasets
+
+### Bundle Size
+- **Code splitting** for routes
+- **Lazy loading** for heavy components
+- **Tree shaking** for unused utilities
+
+## 🧪 Code Quality Standards
+
+### TypeScript
+- **Strict mode** enabled
+- **Interface definitions** for all data structures
+- **Type guards** for runtime validation
+- **Generic hooks** for reusability
+
+### Error Handling
+```typescript
+// ✅ GOOD: Integrated error handling
+const { data: teams, error } = useTeams();
+if (error) return <ErrorState error={error} />;
+
+// ❌ BAD: Manual try/catch everywhere
+try {
+  const response = await fetch(url);
+  // ... manual error handling
+} catch (error) {
+  // ... repetitive error logic
+}
+```
+
+## 📊 Established Component Examples
+
+### Settings Pages Pattern
+All settings pages follow this DRY pattern:
+```typescript
+// Teams page example: [app/workspaces/[workspaceUrl]/settings/teams/page.tsx](mdc:app/workspaces/[workspaceUrl]/settings/teams/page.tsx)
+import { ResourceSettingsPage } from '@/components/settings/resource-settings-page';
+
+export default function TeamsSettingsPage() {
+  return (
+    <ResourceSettingsPage
+      config={{
+        name: 'Team',
+        actionPrefix: 'team',
+        displayFields: ['name', 'identifier', 'description'],
+        searchFields: ['name', 'identifier', 'description'],
+        createFields: [
+          { key: 'name', label: 'Team Name', type: 'text', required: true },
+          { key: 'identifier', label: 'Identifier', type: 'text', required: true },
+          { key: 'description', label: 'Description', type: 'textarea' }
+        ]
+      }}
+      title="Teams"
+      description="Manage teams in your workspace"
+    />
+  );
+}
+```
+
+### Component State Pattern
+```typescript
+// ✅ GOOD: Use action hooks
+const { data: teams, isLoading, error } = useTeams();
+const { createTeam, isPending } = useCreateTeam();
+const { isOffline, pendingCount } = useOfflineStatus();
+
+// Handle offline state
+if (isOffline) {
+  return <OfflineIndicator pendingCount={pendingCount} />;
+}
+
+// Handle loading state
+if (isLoading) {
+  return <SkeletonLoader />;
+}
+
+// Handle error state
+if (error) {
+  return <ErrorState error={error} />;
+}
+```
+
+## 🔗 Available Resources
+
+### Action Hooks
+```typescript
+// Query hooks
+useTeams(), useProjects(), useLabels(), useMembers(), useIssueTypes(), useStates()
+
+// Mutation hooks
+useCreateTeam(), useUpdateTeam(), useDeleteTeam()
+useCreateProject(), useUpdateProject(), useDeleteProject()
+// ... and more for each resource
+
+// Utility hooks
+useOfflineStatus(), useOptimisticUpdate(), useCacheInvalidation()
+```
+
+### Performance Benefits
+- **3-5x faster** than traditional REST APIs
+- **Instant offline support** with IndexedDB
+- **Optimistic updates** for immediate UI feedback
+- **Automatic batching** of multiple operations
+- **Zero boilerplate** - just configuration
+
+This architecture provides Linear/Vercel-quality performance and user experience with minimal code duplication.

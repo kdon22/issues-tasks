@@ -1,4 +1,4 @@
-// Empty State Component - Linear Clone
+// Empty State Component - 
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Search } from 'lucide-react';
 

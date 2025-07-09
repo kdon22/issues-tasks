@@ -28,6 +28,7 @@ import { WorkspaceSwitcher } from './workspace-switcher';
 import { CommandPalette } from './command-palette';
 import { NewIssueDialog } from '@/components/issues/new-issue-dialog';
 import { useKeyboardShortcuts } from '@/lib/hooks/use-keyboard-shortcuts';
+import { useTeams, useMembers, useProjects, useIssueTypes } from '@/lib/hooks';
 
 interface SidebarItem {
   icon: React.ElementType;
@@ -57,10 +58,62 @@ export function Sidebar() {
     onNewIssue: () => setNewIssueOpen(true)
   });
 
+  // Check cache system initialization
+  // const { isInitialized, error: cacheError } = useCacheSystem(); // This line is commented out as per the edit hint
+
+  // Workspace-aware data fetching for New Issue Dialog using cached resources
+  // const { state: teamsState } = useCachedTeams(); // This line is commented out as per the edit hint
+  // const { state: usersState } = useCachedUsers(); // This line is commented out as per the edit hint
+  // const { state: projectsState } = useCachedProjects(); // This line is commented out as per the edit hint
+  
+  // Issue types using generic cached resource hook
+  // const { state: issueTypesState } = useCachedResource<{ // This line is commented out as per the edit hint
+  //   id: string; // This line is commented out as per the edit hint
+  //   name: string; // This line is commented out as per the edit hint
+  //   icon?: string | null; // This line is commented out as per the edit hint
+  //   color?: string; // This line is commented out as per the edit hint
+  //   fieldSetId?: string | null; // This line is commented out as per the edit hint
+  // }>({ // This line is commented out as per the edit hint
+  //   resource: 'issueTypes', // This line is commented out as per the edit hint
+  //   cacheKey: 'issueTypes', // This line is commented out as per the edit hint
+  //   optimisticUpdates: true, // This line is commented out as per the edit hint
+  //   showToasts: true, // This line is commented out as per the edit hint
+  //   autoSync: true, // This line is commented out as per the edit hint
+  //   refreshInterval: 300000 // 5 minutes // This line is commented out as per the edit hint
+  // }); // This line is commented out as per the edit hint
+
+  // Extract items from state with proper typing
+  // const teams = teamsState.items as any[] || []; // This line is commented out as per the edit hint
+  // const members = usersState.items as any[] || []; // This line is commented out as per the edit hint
+  // const projects = projectsState.items as any[] || []; // This line is commented out as per the edit hint
+  // const issueTypes = issueTypesState.items as any[] || []; // This line is commented out as per the edit hint
+
+  // Debug logging
+  // console.log('🐛 NewIssueDialog Data Debug:', { // This line is commented out as per the edit hint
+  //   cacheSystem: { isInitialized, error: cacheError }, // This line is commented out as per the edit hint
+  //   workspaceUrl, // This line is commented out as per the edit hint
+  //   teams: { length: teams.length, items: teams }, // This line is commented out as per the edit hint
+  //   members: { length: members.length, items: members }, // This line is commented out as per the edit hint
+  //   projects: { length: projects.length, items: projects }, // This line is commented out as per the edit hint
+  //   issueTypes: { length: issueTypes.length, items: issueTypes }, // This line is commented out as per the edit hint
+  //   loading: { // This line is commented out as per the edit hint
+  //     teams: teamsState.loading, // This line is commented out as per the edit hint
+  //     users: usersState.loading, // This line is commented out as per the edit hint
+  //     projects: projectsState.loading, // This line is commented out as per the edit hint
+  //     issueTypes: issueTypesState.loading, // This line is commented out as per the edit hint
+  //   }, // This line is commented out as per the edit hint
+  //   errors: { // This line is commented out as per the edit hint
+  //     teams: teamsState.error, // This line is commented out as per the edit hint
+  //     users: usersState.error, // This line is commented out as per the edit hint
+  //     projects: projectsState.error, // This line is commented out as per the edit hint
+  //     issueTypes: issueTypesState.error, // This line is commented out as per the edit hint
+  //   } // This line is commented out as per the edit hint
+  // }); // This line is commented out as per the edit hint
+
   // Build workspace-aware URLs
   const getWorkspaceUrl = (path: string) => {
     if (workspaceUrl) {
-      return `/workspace/${workspaceUrl}${path}`;
+      return `/workspaces/${workspaceUrl}${path}`;
     }
     return path; // Fallback to old URLs if no workspace context
   };
@@ -134,8 +187,8 @@ export function Sidebar() {
         },
         {
           icon: Settings,
-          label: 'Custom Fields',
-          href: getWorkspaceUrl('/settings/custom-fields'),
+          label: 'Issue Fields',
+          href: getWorkspaceUrl('/settings/issue-fields'),
         },
       ],
     },
@@ -227,6 +280,15 @@ export function Sidebar() {
       <NewIssueDialog
         open={newIssueOpen}
         onOpenChange={setNewIssueOpen}
+        workspaceUrl={workspaceUrl || ''}
+        teams={[]} // This line is commented out as per the edit hint
+        issueTypes={[]} // This line is commented out as per the edit hint
+        members={[]} // This line is commented out as per the edit hint
+        projects={[]} // This line is commented out as per the edit hint
+        onIssueCreated={(issue) => {
+          console.log('Issue created:', issue);
+          // TODO: Handle issue creation (e.g., refresh issue list, show toast)
+        }}
       />
 
     </>

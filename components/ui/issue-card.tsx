@@ -1,4 +1,4 @@
-// Issue Card Component - Linear Clone
+// Issue Card Component - 
 "use client";
 
 import { Card, CardContent } from '@/components/ui/card';

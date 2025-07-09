@@ -78,7 +78,7 @@ export function IssueCard({ issue, className }: IssueCardProps) {
   return (
     <div
       className={cn(
-        "group relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl p-6 transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 hover:-translate-y-1",
+        "group relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl p-6 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50",
         isHovered && "ring-2 ring-orange-500/20",
         className
       )}
@@ -86,10 +86,10 @@ export function IssueCard({ issue, className }: IssueCardProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Gradient Border Effect */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 via-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 via-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100" />
       
       {/* Priority Indicator */}
-      <div className="absolute left-0 top-6 w-1 h-12 bg-gradient-to-b from-orange-500 to-orange-600 rounded-r-full opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute left-0 top-6 w-1 h-12 bg-gradient-to-b from-orange-500 to-orange-600 rounded-r-full opacity-60 group-hover:opacity-100" />
       
       {/* Content */}
       <div className="relative">
@@ -112,7 +112,7 @@ export function IssueCard({ issue, className }: IssueCardProps) {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="opacity-0 group-hover:opacity-100"
                 >
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>
@@ -133,7 +133,7 @@ export function IssueCard({ issue, className }: IssueCardProps) {
         </div>
 
         {/* Title */}
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors cursor-pointer">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 cursor-pointer">
           {issue.title}
         </h3>
 
@@ -217,7 +217,7 @@ export function IssueCard({ issue, className }: IssueCardProps) {
       </div>
 
       {/* Hover Glow Effect */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 pointer-events-none" />
     </div>
   );
 } 

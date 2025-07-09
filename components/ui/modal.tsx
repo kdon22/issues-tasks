@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
 import { X } from "lucide-react"
 import { Button } from "./button"
 import { cn } from "@/lib/utils"
@@ -18,6 +19,8 @@ interface ModalProps {
   closeOnOverlayClick?: boolean
   preventScroll?: boolean
   onReset?: () => void
+  // Add option to disable auto title for accessibility
+  hideAutoTitle?: boolean
 }
 
 interface ModalHeaderProps {
@@ -64,6 +67,7 @@ function Modal({
   closeOnOverlayClick = true,
   preventScroll = true,
   onReset,
+  hideAutoTitle = false,
   ...props
 }: ModalProps) {
   React.useEffect(() => {
@@ -112,6 +116,12 @@ function Modal({
             className
           )}
         >
+          {/* Automatically include a hidden title for accessibility */}
+          {!hideAutoTitle && (
+            <VisuallyHidden.Root asChild>
+              <DialogPrimitive.Title>Dialog</DialogPrimitive.Title>
+            </VisuallyHidden.Root>
+          )}
           {children}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

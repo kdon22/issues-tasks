@@ -50,9 +50,9 @@ export function IssueDetailHeader({
 
   const handleCopyUrl = async () => {
     try {
-      const url = `${window.location.origin}/workspace/${workspaceUrl}/issues/${issue.id}`;
+      const url = `${window.location.origin}/workspaces/${workspaceUrl}/issues/${issue.id}`;
       await navigator.clipboard.writeText(url);
-      toast.success('Issue URL copied to clipboard');
+
     } catch (error) {
       toast.error('Failed to copy URL');
     }
@@ -60,12 +60,12 @@ export function IssueDetailHeader({
 
   const handleToggleFavorite = () => {
     setIsFavorited(!isFavorited);
-    toast.success(isFavorited ? 'Removed from favorites' : 'Added to favorites');
+
   };
 
   const handleToggleFlag = () => {
     setIsFlagged(!isFlagged);
-    toast.success(isFlagged ? 'Flag removed' : 'Flag added');
+
   };
 
   // Build breadcrumb chain
@@ -102,7 +102,7 @@ export function IssueDetailHeader({
           {breadcrumbs.map((breadcrumb, index) => (
             <div key={breadcrumb.id} className="flex items-center gap-1 min-w-0">
               <Link 
-                href={`/workspace/${workspaceUrl}/issues/${breadcrumb.id}`}
+                href={`/workspaces/${workspaceUrl}/issues/${breadcrumb.id}`}
                 className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors min-w-0"
               >
                 <span className="font-mono text-xs">{breadcrumb.identifier}</span>

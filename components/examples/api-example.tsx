@@ -1,4 +1,4 @@
-// API Usage Example - Linear Clone (Shows DRY Power!)
+// API Usage Example -  (Shows DRY Power!)
 'use client';
 
 import { useState, useEffect } from 'react';

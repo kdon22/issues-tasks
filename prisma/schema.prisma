@@ -101,6 +101,7 @@ model Workspace {
   notifications   Notification[]
   customFields    CustomField[]
   fieldConfigurations FieldConfiguration[]
+  fieldSets       FieldSet[]
 }
 
 model WorkspaceMember {
@@ -124,9 +125,10 @@ model Team {
   description    String?
   avatarType     AvatarType   @default(INITIALS)
   avatarIcon     String?
-  avatarColor    String?
   avatarEmoji    String?
   avatarImageUrl String?
+  timezone       String?
+  isPrivate      Boolean      @default(false)
   workspaceId    String
   settings       Json?        @default("{}")
   createdAt      DateTime     @default(now())
@@ -207,7 +209,7 @@ model Project {
   name          String
   summary       String?
   description   String?
-  identifier    String   // e.g., "WEB", "API"
+  identifier    String   // e.g., "WEB", "API", "MOB" - used for issue numbering
   color         String?
   icon          String?
   status        ProjectStatus @default(ACTIVE)
@@ -319,20 +321,22 @@ model IssueType {
   name         String
   description  String?
   icon         String?    // Icon name (e.g., "bug", "feature")
-  color        String
   workspaceId  String
   statusFlowId String?    // Reference to status flow
+  fieldSetId   String?    // Reference to field set
   isDefault    Boolean    @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   
   workspace    Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   statusFlow   StatusFlow? @relation(fields: [statusFlowId], references: [id], onDelete: SetNull)
+  fieldSet     FieldSet?  @relation(fields: [fieldSetId], references: [id], onDelete: SetNull)
   issues       Issue[]
   
   @@unique([workspaceId, name])
   @@index([workspaceId])
   @@index([statusFlowId])
+  @@index([fieldSetId])
   @@map("issue_types")
 }
 
@@ -544,6 +548,45 @@ model CustomFieldValue {
   @@index([customFieldId])
   @@index([issueId])
   @@map("custom_field_values")
+}
+
+model FieldSet {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  workspaceId     String
+  isDefault       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  configurations  FieldSetConfiguration[]
+  issueTypes      IssueType[]
+  
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("field_sets")
+}
+
+model FieldSetConfiguration {
+  id              String   @id @default(cuid())
+  fieldSetId      String
+  fieldKey        String   // 'title', 'priority', 'assignee', etc.
+  isRequired      Boolean  @default(false)
+  isVisible       Boolean  @default(true)
+  displayOrder    Int      @default(0)
+  context         String   @default("create") // 'create', 'edit', 'view', 'subtask_create'
+  showOnSubtask   Boolean  @default(true)
+  showOnNewIssue  Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  fieldSet        FieldSet @relation(fields: [fieldSetId], references: [id], onDelete: Cascade)
+  
+  @@unique([fieldSetId, fieldKey, context])
+  @@index([fieldSetId])
+  @@index([fieldKey])
+  @@map("field_set_configurations")
 }
 
 model FieldConfiguration {

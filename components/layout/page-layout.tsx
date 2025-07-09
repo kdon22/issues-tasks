@@ -1,4 +1,4 @@
-// Page Layout Component - Linear Clone
+// Page Layout Component - 
 import { AppHeader } from '@/components/layout/app-header';
 import { cn } from '@/lib/utils';
 

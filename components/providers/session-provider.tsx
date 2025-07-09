@@ -1,4 +1,4 @@
-// Session Provider - Linear Clone
+// Session Provider - 
 "use client";
 
 import { SessionProvider } from "next-auth/react";

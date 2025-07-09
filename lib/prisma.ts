@@ -1,4 +1,4 @@
-// Prisma Client Instance - Linear Clone
+// Prisma Client Instance - 
 import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as {

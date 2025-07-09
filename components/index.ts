@@ -1,4 +1,4 @@
-// Component Exports - Linear Clone
+// Component Exports - 
 // Keep imports clean and DRY
 
 // Base UI Components

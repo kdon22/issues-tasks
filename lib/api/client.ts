@@ -1,4 +1,4 @@
-// API Client - Linear Clone (Type-safe & DRY!)
+// API Client -  (Type-safe & DRY!)
 import { ApiResponse } from './types';
 
 class ApiClient {

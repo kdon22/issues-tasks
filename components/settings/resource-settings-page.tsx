@@ -1,959 +1,1054 @@
 "use client";
 
-import React, { useState, useEffect, ReactNode } from 'react';
-import { useResource } from '@/lib/hooks/use-resource';
-import { useOfflineSync } from '@/lib/hooks/use-offline-sync';
-import { 
-  MobileHeader, 
-  MobileList, 
-  MobileFAB, 
-  MobileBottomSheet,
-  SwipeCard,
-  useIsMobile 
-} from '@/components/ui/mobile-responsive';
+/**
+ * Enhanced Members Table Features:
+ * 
+ * 1. Table displays: Avatar, Email, First Name, Last Name, Display Name, Teams (accordion), Status badge
+ * 2. Team accordion: Click to expand/collapse team list with roles
+ * 3. Status badges: Active (green), Invited (yellow), Disabled (gray)
+ * 4. Action menu includes:
+ *    - For PENDING users: Resend/Revoke invitation
+ *    - For ACTIVE users: Disable member
+ *    - For DISABLED users: Enable member
+ *    - Delete with confirmation dialog
+ * 5. Create form: First Name, Last Name, Display Name, Email, Role dropdown (Owner/Admin/Member/Guest)
+ * 6. Confirmation dialog for delete actions using modal.tsx
+ */
+
+import React, { useState, useEffect } from 'react';
+import { useActionQuery, useOfflineStatus, resourceHooks } from '@/lib/hooks/use-action-api';
+import { BaseResource } from '@/lib/types';
+import { SettingsPageLayout } from '@/components/layout/settings-page-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ColorPicker } from '@/components/ui/color-picker';
-import { IconPicker, getIconComponent } from '@/components/ui/icon-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Check, X, MoreHorizontal, Copy, Hash } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { IconPicker } from '@/components/ui/icon-picker';
+import { ColorPicker } from '@/components/ui/color-picker';
+import { Switch } from '@/components/ui/switch';
+import { Plus, Trash2, Edit2, MoreHorizontal, Search, Palette, ChevronDown, ChevronRight, Mail, UserX, RefreshCw, Shield } from 'lucide-react';
+import { getIconComponent } from '@/components/ui/icon-picker';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
-import { SettingsPageLayout } from '@/components/layout/settings-page-layout';
-import { cn } from '@/lib/utils';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from 'sonner';
 
-// Field configuration types
-interface FieldConfig {
-  key: string;
-  label: string;
-  type: 'text' | 'email' | 'select' | 'textarea' | 'number' | 'switch' | 'color' | 'icon';
-  options?: string[] | { label: string; value: string }[];
-  required?: boolean;
-  placeholder?: string;
-  validation?: (value: any) => string | null;
+// BaseResource now includes index signature for additional properties
+
+// Resource configuration
+interface ResourceConfig {
+  name: string;
+  actionPrefix: string; // e.g., 'team', 'project', 'label'
+  displayFields: string[];
+  searchFields: string[];
+  createFields: { key: string; label: string; type: string; required?: boolean; options?: { actionPrefix?: string } }[];
+  editFields?: { key: string; label: string; type: string; required?: boolean; options?: { actionPrefix?: string } }[];
 }
 
-interface ResourceConfig<T = any> {
-  // Resource settings
-  endpoint: string;
-  resourceName: string;
-  title: string;
-  description: string;
+// Utility to generate common resource configurations
+export function generateResourceConfig(
+  actionPrefix: string,
+  overrides: Partial<ResourceConfig> = {}
+): ResourceConfig {
+  const name = actionPrefix.charAt(0).toUpperCase() + actionPrefix.slice(1);
   
-  // Form fields
-  fields: FieldConfig[];
-  
-  // Display settings
-  searchFields?: string[];
-  sortField?: string;
-  sortOrder?: 'asc' | 'desc';
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
-  
-  // Actions
-  actions?: ('create' | 'update' | 'delete' | 'duplicate')[];
-  
-  // Custom actions
-  onRowClick?: (item: T) => void;
-  editableField?: string; // Field name that should be clickable to edit
-  
-  // Custom renderers
-  mobileCardRenderer?: (item: T, actions: ResourceActions<T>) => ReactNode;
-  desktopTableRenderer?: (items: T[], actions: ResourceActions<T>) => ReactNode;
-  
-  // Hooks
-  useResourceHook?: () => any;
-  
-  // Permissions
-  canCreate?: boolean;
-  canUpdate?: boolean;
-  canDelete?: boolean;
-  
-  // Mock data for development
-  mockData?: T[];
+  const baseConfig: ResourceConfig = {
+    name,
+    actionPrefix,
+    displayFields: ['name', 'createdAt'],
+    searchFields: ['name'],
+    createFields: [
+      { key: 'name', label: 'Name', type: 'text', required: true }
+    ]
+  };
+
+  // Add common fields based on action prefix
+  if (['project', 'label', 'state'].includes(actionPrefix)) {
+    baseConfig.displayFields = ['icon', 'name', 'description', 'createdAt'];
+    baseConfig.searchFields = ['name', 'description'];
+    baseConfig.createFields = [
+      { key: 'icon', label: 'Icon', type: 'icon' },
+      { key: 'name', label: 'Name', type: 'text', required: true },
+      { key: 'description', label: 'Description', type: 'textarea' },
+      { key: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  // Team-specific fields (uses avatar fields)
+  if (actionPrefix === 'team') {
+    baseConfig.displayFields = ['avatarIcon', 'name', 'identifier', 'timezone', 'isPrivate', 'createdAt'];
+    baseConfig.searchFields = ['name', 'identifier', 'description'];
+    baseConfig.createFields = [
+      { key: 'avatarIcon', label: 'Icon', type: 'icon' },
+      { key: 'name', label: 'Name', type: 'text', required: true },
+      { key: 'identifier', label: 'Identifier', type: 'text', required: true },
+      { key: 'description', label: 'Description', type: 'textarea' },
+      { key: 'timezone', label: 'Time Zone', type: 'timezone' },
+      { key: 'isPrivate', label: 'Private Team', type: 'checkbox' }
+    ];
+  }
+
+  // Issue Type-specific fields (NO color field)
+  if (actionPrefix === 'issueType') {
+    baseConfig.displayFields = ['icon', 'name', 'description', 'statusFlowId', 'fieldSetId', 'createdAt'];
+    baseConfig.searchFields = ['name', 'description'];
+    baseConfig.createFields = [
+      { key: 'icon', label: 'Icon', type: 'icon' },
+      { key: 'name', label: 'Name', type: 'text', required: true },
+      { key: 'description', label: 'Description', type: 'textarea' },
+      { key: 'statusFlowId', label: 'Status Flow', type: 'select', options: { actionPrefix: 'statusFlow' } },
+      { key: 'fieldSetId', label: 'Field Set', type: 'select', options: { actionPrefix: 'fieldSet' } }
+    ];
+  }
+
+  // Project-specific fields
+  if (actionPrefix === 'project') {
+    baseConfig.createFields.push(
+      { key: 'statusFlowId', label: 'Status Flow', type: 'select', options: { actionPrefix: 'statusFlow' } },
+      { key: 'fieldSetId', label: 'Field Set', type: 'select', options: { actionPrefix: 'fieldSet' } }
+    );
+  }
+
+  // Member-specific fields
+  if (actionPrefix === 'member') {
+    baseConfig.displayFields = ['avatarIcon', 'email', 'name', 'lastName', 'displayName', 'teams', 'status'];
+    baseConfig.searchFields = ['name', 'lastName', 'email', 'displayName'];
+    baseConfig.createFields = [
+      { key: 'name', label: 'First Name', type: 'text', required: true },
+      { key: 'lastName', label: 'Last Name', type: 'text', required: true },
+      { key: 'displayName', label: 'Display Name', type: 'text' },
+      { key: 'email', label: 'Email', type: 'email', required: true },
+      { key: 'role', label: 'Role', type: 'select', required: true }
+    ];
+  }
+
+  return { ...baseConfig, ...overrides };
 }
 
-interface ResourceActions<T> {
-  onEdit: (item: T) => void;
-  onDelete: (item: T) => void;
-  onDuplicate?: (item: T) => void;
+// Hook for resource settings that automatically sets up all necessary hooks
+export function useResourceSettings<T extends BaseResource = BaseResource>(
+  config: ResourceConfig,
+  optimisticUpdates: boolean = true
+) {
+  // Use existing resource hooks instead of creating new ones
+  const hooks = (resourceHooks as any)[config.actionPrefix];
+  
+  const query = hooks.useList();
+  const createMutation = hooks.useCreate();
+  const updateMutation = hooks.useUpdate();
+  const deleteMutation = hooks.useDelete();
+  const { isOffline, pendingCount } = useOfflineStatus();
+
+  // Pre-load dropdown options
+  const { data: statusFlowOptions = [] } = useActionQuery<BaseResource[]>('statusFlow.list');
+  const { data: fieldSetOptions = [] } = useActionQuery<BaseResource[]>('fieldSet.list');
+
+  const getDropdownOptions = (actionPrefix: string): BaseResource[] => {
+    switch (actionPrefix) {
+      case 'statusFlow':
+        return statusFlowOptions;
+      case 'fieldSet':
+        return fieldSetOptions;
+      default:
+        return [];
+    }
+  };
+
+  const handleCreate = (data: any) => {
+    createMutation.create(data);
+  };
+
+  const handleUpdate = (id: string, data: any) => {
+    updateMutation.update(id, data);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteMutation.delete(id);
+  };
+
+  return {
+    // Data
+    items: query.data || [],
+    isLoading: query.isLoading,
+    error: query.error,
+    
+    // Status
+    isOffline,
+    pendingCount,
+    
+    // Mutations
+    create: {
+      mutate: handleCreate,
+      isPending: createMutation.isPending,
+      error: createMutation.error
+    },
+    update: {
+      mutate: handleUpdate,
+      isPending: updateMutation.isPending,
+      error: updateMutation.error
+    },
+    delete: {
+      mutate: handleDelete,
+      isPending: deleteMutation.isPending,
+      error: deleteMutation.error
+    },
+    
+    // Utilities
+    getDropdownOptions
+  };
 }
 
-interface ResourceSettingsPageProps<T = any> {
-  config: ResourceConfig<T>;
-  className?: string;
+interface ResourceSettingsPageProps {
+  config: ResourceConfig;
+  title?: string;
+  description?: string;
+  onEdit?: (item: BaseResource) => void;
 }
 
-export function ResourceSettingsPage<T extends { id: string }>({ 
-  config, 
-  className 
-}: ResourceSettingsPageProps<T>) {
-  const isMobile = useIsMobile();
-  const [mounted, setMounted] = useState(false);
-  
-  // Use custom hook or default useResource
-  const resourceHook = config.useResourceHook || (() => useResource({
-    endpoint: config.endpoint,
-    cacheKey: config.resourceName,
-    mockData: config.mockData || []
-  }));
-  
-  const { 
-    items, 
-    loading, 
-    error, 
-    create, 
-    update, 
-    delete: deleteItem, 
-    refetch 
-  } = resourceHook();
-  
-  const { isOnline, lastSync } = useOfflineSync();
-  
-  // Form state
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Record<string, any>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Search state
+export function ResourceSettingsPage({ config, title, description, onEdit }: ResourceSettingsPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingItem, setEditingItem] = useState<BaseResource | null>(null);
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    variant?: 'destructive' | 'default';
+  }>({ open: false, title: '', description: '', onConfirm: () => {} });
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  
+  // Use the new resource settings hook
+  const {
+    items,
+    isLoading,
+    error,
+    isOffline,
+    pendingCount,
+    create,
+    update,
+    delete: deleteResource,
+    getDropdownOptions
+  } = useResourceSettings(config);
+
+  // Filter items based on search
+  const filteredItems = items.filter((item: BaseResource) => {
+    if (!searchQuery) return true;
+    return config.searchFields.some(field => 
+      (item as any)[field]?.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
   // Initialize form data
-  const initializeFormData = (item?: T): Record<string, any> => {
+  const initializeForm = (item?: BaseResource) => {
+    const fields = editingItem ? (config.editFields || config.createFields) : config.createFields;
     const initialData: Record<string, any> = {};
     
-    // Check if this is an issue type endpoint to use different field names
-    const isIssueType = config.endpoint.includes('issue-types');
-    
-    config.fields.forEach(field => {
-      const value = item ? (item as any)[field.key] : undefined;
-      
-      // Handle different field types with proper defaults
-      switch (field.type) {
-        case 'switch':
-          initialData[field.key] = value !== undefined ? Boolean(value) : false;
-          break;
-        case 'number':
-          initialData[field.key] = value !== undefined ? Number(value) : 0;
-          break;
-        case 'color':
-          initialData[field.key] = value || (field.options?.[0] ? (typeof field.options[0] === 'string' ? field.options[0] : field.options[0].value) : '#6B7280');
-          break;
-        case 'icon':
-          // Reconstruct icon object from individual database fields
-          if (item) {
-            if (isIssueType) {
-              // For issue types, reconstruct from color and icon fields
-              const color = (item as any).color || '#6366F1';
-              const icon = (item as any).icon;
-              
-              initialData[field.key] = {
-                type: icon ? (icon.length === 1 ? 'EMOJI' : 'ICON') : 'INITIALS',
-                color: color,
-                icon: icon && icon.length > 1 ? icon : null,
-                emoji: icon && icon.length === 1 ? icon : null,
-                name: (item as any).name || ''
-              };
-            } else {
-              // For teams and other resources, use avatar* fields
-              initialData[field.key] = {
-                type: (item as any).avatarType || 'INITIALS',
-                color: (item as any).avatarColor || '#6366F1',
-                icon: (item as any).avatarIcon || null,
-                emoji: (item as any).avatarEmoji || null,
-                name: (item as any).name || ''
-              };
-            }
-          } else {
-            initialData[field.key] = {
-              type: 'INITIALS',
-              color: '#6366F1',
-              icon: null,
-              emoji: null,
-              name: ''
-            };
-          }
-          break;
-        default:
-          initialData[field.key] = value || '';
-      }
-    });
-    return initialData;
-  };
-
-  // Initialize empty form data on mount
-  useEffect(() => {
-    setFormData(initializeFormData());
-  }, [config.fields]);
-
-  // Transform form data to ensure proper types before API submission
-  const transformFormData = (data: Record<string, any>): Record<string, any> => {
-    const transformed: Record<string, any> = {};
-    
-    // Check if this is an issue type endpoint to use different field names
-    const isIssueType = config.endpoint.includes('issue-types');
-    
-    config.fields.forEach(field => {
-      const value = data[field.key];
-      
-      switch (field.type) {
-        case 'switch':
-          transformed[field.key] = Boolean(value);
-          break;
-        case 'number':
-          transformed[field.key] = value !== '' ? Number(value) : null;
-          break;
-        case 'icon':
-          if (value && typeof value === 'object') {
-            if (isIssueType) {
-              // For issue types, use direct field names
-              transformed.color = value.color || '#6366F1';
-              if (value.type === 'ICON' && value.icon) {
-                transformed.icon = value.icon;
-              } else if (value.type === 'EMOJI' && value.emoji) {
-                transformed.icon = value.emoji;
-              }
-            } else {
-              // For teams and other resources, use avatar* field names
-              transformed.avatarType = value.type || 'INITIALS';
-              transformed.avatarColor = value.color || '#6366F1';
-              transformed.avatarIcon = value.icon || '';
-              transformed.avatarEmoji = value.emoji || '';
-            }
-          } else {
-            if (isIssueType) {
-              // Default values for issue types
-              transformed.color = '#6366F1';
-            } else {
-              // Default values for teams
-              transformed.avatarType = 'INITIALS';
-              transformed.avatarColor = '#6366F1';
-              transformed.avatarIcon = '';
-              transformed.avatarEmoji = '';
-            }
-          }
-          break;
-        default:
-          transformed[field.key] = value;
+    fields.forEach(field => {
+      if (field.type === 'checkbox') {
+        initialData[field.key] = Boolean(item?.[field.key]);
+      } else if (field.type === 'select' && !field.required && item?.[field.key] === null) {
+        initialData[field.key] = '__none__';
+      } else {
+        initialData[field.key] = item?.[field.key] || '';
       }
     });
     
-    return transformed;
+    setFormData(initialData);
   };
-  
-  // Filter items based on search
-  const filteredItems = items.filter((item: T) => {
-    if (!searchQuery) return true;
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    const fields = editingItem ? (config.editFields || config.createFields) : config.createFields;
     
-    const searchFields = config.searchFields || ['name', 'title', 'label'];
-    return searchFields.some(field => {
-      const value = (item as any)[field];
-      return value && value.toString().toLowerCase().includes(searchQuery.toLowerCase());
+    // Basic validation
+    const hasError = fields.some(field => {
+      if (field.required && !formData[field.key]) {
+        toast.error(`${field.label} is required`);
+        return true;
+      }
+      return false;
     });
-  });
-  
-  // Sort items
-  const sortedItems = [...filteredItems].sort((a, b) => {
-    if (!config.sortField) return 0;
     
-    const aValue = (a as any)[config.sortField];
-    const bValue = (b as any)[config.sortField];
-    
-    if (config.sortOrder === 'desc') {
-      return bValue > aValue ? 1 : -1;
+    if (hasError) return;
+
+    // Clean up data
+    const cleanedData = { ...formData };
+    fields.forEach(field => {
+      if (field.type === 'select' && !field.required && (cleanedData[field.key] === '' || cleanedData[field.key] === '__none__')) {
+        cleanedData[field.key] = null;
+      }
+    });
+
+    try {
+      if (editingItem) {
+        await update.mutate(editingItem.id, cleanedData);
+        toast.success(`${config.name} updated successfully`);
+      } else {
+        await create.mutate(cleanedData);
+        toast.success(`${config.name} created successfully`);
+      }
+      handleCancel();
+    } catch (error: any) {
+      toast.error(`Failed to ${editingItem ? 'update' : 'create'} ${config.name.toLowerCase()}: ${error.message}`);
     }
-    return aValue > bValue ? 1 : -1;
-  });
-  
-  // CRUD handlers
+  };
+
+  // Handle delete
+  const handleDelete = async (item: BaseResource) => {
+    if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
+      try {
+        await deleteResource.mutate(item.id);
+        toast.success(`${config.name} deleted successfully`);
+      } catch (error: any) {
+        toast.error(`Failed to delete ${config.name.toLowerCase()}: ${error.message}`);
+      }
+    }
+  };
+
+  // Handle edit
+  const handleEdit = (item: BaseResource) => {
+    if (onEdit) {
+      onEdit(item);
+    } else {
+      setEditingItem(item);
+      setShowCreateForm(true);
+      initializeForm(item);
+    }
+  };
+
+  // Handle create
   const handleCreate = () => {
+    setEditingItem(null);
     setShowCreateForm(true);
-    setFormData(initializeFormData());
-  };
-  
-  const handleEdit = (item: T) => {
-    setEditingId(item.id);
-    setFormData(initializeFormData(item));
+    initializeForm();
   };
 
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setFormData(initializeFormData());
-  };
-
-  const handleCancelCreate = () => {
+  // Cancel form
+  const handleCancel = () => {
     setShowCreateForm(false);
-    setFormData(initializeFormData());
+    setEditingItem(null);
+    setFormData({});
   };
-  
-  const handleDelete = async (item: T) => {
-    const itemName = (item as any).name || (item as any).title || (item as any).label || 'item';
-    if (!confirm(`Delete ${itemName}?`)) return;
-    
-    try {
-      await deleteItem(item.id);
-      toast.success(`${config.resourceName} deleted successfully`);
-    } catch (error) {
-      console.error('Failed to delete:', error);
-      toast.error(`Failed to delete ${config.resourceName}`);
-    }
-  };
-  
-  const handleDuplicate = async (item: T) => {
-    try {
-      const duplicateData = { ...item };
-      delete (duplicateData as any).id;
-      
-      // Add "Copy" to name if it exists
-      if ((duplicateData as any).name) {
-        (duplicateData as any).name = `${(duplicateData as any).name} (Copy)`;
-      }
-      
-      await create(duplicateData);
-      toast.success(`${config.resourceName} duplicated successfully`);
-    } catch (error) {
-      console.error('Failed to duplicate:', error);
-      toast.error(`Failed to duplicate ${config.resourceName}`);
-    }
-  };
-  
-  const handleSubmitCreate = async () => {
-    if (!formData || Object.keys(formData).length === 0) return;
 
-    // Validate form
-    const validationErrors: string[] = [];
-    config.fields.forEach(field => {
-      if (field.required && !formData[field.key]) {
-        validationErrors.push(`${field.label} is required`);
+  // Handle member-specific actions
+  const handleMemberAction = async (item: BaseResource, action: 'resend' | 'revoke' | 'disable' | 'enable') => {
+    try {
+      switch (action) {
+        case 'resend':
+          // TODO: Implement resend invitation
+          toast.success('Invitation resent successfully');
+          break;
+        case 'revoke':
+          // TODO: Implement revoke invitation
+          toast.success('Invitation revoked successfully');
+          break;
+        case 'disable':
+          await update.mutate(item.id, { status: 'DISABLED' });
+          toast.success('Member disabled successfully');
+          break;
+        case 'enable':
+          await update.mutate(item.id, { status: 'ACTIVE' });
+          toast.success('Member enabled successfully');
+          break;
       }
-      if (field.validation) {
-        const error = field.validation(formData[field.key]);
-        if (error) validationErrors.push(error);
-      }
+    } catch (error: any) {
+      toast.error(`Failed to ${action} member: ${error.message}`);
+    }
+  };
+
+  // Handle delete with confirmation
+  const handleDeleteWithConfirmation = (item: BaseResource) => {
+    setConfirmDialog({
+      open: true,
+      title: `Delete ${config.name}`,
+      description: `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
+      variant: 'destructive',
+      onConfirm: () => handleDelete(item)
     });
+  };
+
+  // Render form field
+  const renderFormField = (field: { key: string; label: string; type: string; required?: boolean; options?: { actionPrefix?: string } }) => {
+    const value = (formData[field.key] as string) || '';
     
-    if (validationErrors.length > 0) {
-      toast.error(validationErrors[0]);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const transformedData = transformFormData(formData);
-      await create(transformedData);
-      toast.success(`${config.resourceName} created successfully`);
-      handleCancelCreate();
-    } catch (error) {
-      console.error('Failed to create:', error);
-      toast.error(`Failed to create ${config.resourceName}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSubmitEdit = async (id: string) => {
-    if (!formData || Object.keys(formData).length === 0) return;
-
-    // Validate form
-    const validationErrors: string[] = [];
-    config.fields.forEach(field => {
-      if (field.required && !formData[field.key]) {
-        validationErrors.push(`${field.label} is required`);
-      }
-      if (field.validation) {
-        const error = field.validation(formData[field.key]);
-        if (error) validationErrors.push(error);
-      }
-    });
-    
-    if (validationErrors.length > 0) {
-      toast.error(validationErrors[0]);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const transformedData = transformFormData(formData);
-      await update(id, transformedData);
-      toast.success(`${config.resourceName} updated successfully`);
-      handleCancelEdit();
-    } catch (error) {
-      console.error('Failed to update:', error);
-      toast.error(`Failed to update ${config.resourceName}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
-  // Resource actions for renderers
-  const resourceActions: ResourceActions<T> = {
-    onEdit: handleEdit,
-    onDelete: handleDelete,
-    onDuplicate: config.actions?.includes('duplicate') ? handleDuplicate : undefined
-  };
-  
-  // Don't render until hydrated
-  if (!mounted) {
-    return null;
-  }
-  
-  // Loading state - only show full loading if we have no data at all
-  if (loading && items.length === 0) {
-    return (
-      <SettingsPageLayout title={config.title} description={config.description}>
-        <div className="flex justify-center py-8">
-          <div className="text-muted-foreground">Loading {config.resourceName}...</div>
-        </div>
-      </SettingsPageLayout>
-    );
-  }
-  
-  // Error state
-  if (error && items.length === 0) {
-    return (
-      <SettingsPageLayout title={config.title} description={config.description}>
-        <div className="flex justify-center py-8">
-          <div className="text-center space-y-4">
-            <p className="text-muted-foreground">Failed to load {config.resourceName}</p>
-            <Button onClick={refetch} variant="outline">
-              Try Again
-            </Button>
-          </div>
-        </div>
-      </SettingsPageLayout>
-    );
-  }
-  
-  // Mobile view
-  if (isMobile) {
-    return (
-      <div className={cn("flex flex-col h-screen bg-gray-50", className)}>
-        <MobileHeader
-          title={config.title}
-          subtitle={`${items.length} ${config.resourceName}${items.length === 1 ? '' : 's'}`}
-          isOnline={isOnline}
-          lastSync={lastSync}
-        />
-
-        <div className="flex-1 overflow-hidden">
-          <MobileList
-            items={sortedItems}
-            renderItem={(item) => 
-              config.mobileCardRenderer ? 
-                config.mobileCardRenderer(item, resourceActions) : 
-                <DefaultMobileCard item={item} actions={resourceActions} fields={config.fields} />
-            }
-            loading={loading}
-            error={error}
-            emptyMessage={`No ${config.resourceName} found`}
-            onRefresh={refetch}
-            searchable={true}
-            onSearch={setSearchQuery}
+    switch (field.type) {
+      case 'email':
+        return (
+          <Input
+            type="email"
+            value={value}
+            onChange={(e) => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
+            placeholder={field.label}
           />
-        </div>
-
-        {config.actions?.includes('create') && (
-          <MobileFAB
-            icon={<Plus className="h-5 w-5" />}
-            onClick={handleCreate}
-            label={`Add ${config.resourceName}`}
+        );
+      case 'textarea':
+        return (
+          <textarea
+            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            value={value}
+            onChange={(e) => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
+            placeholder={field.label}
           />
-        )}
-      </div>
-    );
-  }
-  
-  // Desktop view
-  return (
-    <SettingsPageLayout
-      title={config.title}
-      description={config.description}
-      maxWidth={config.maxWidth || 'full'}
-      actions={config.actions?.includes('create') ? [
-        {
-          label: `Add ${config.resourceName}`,
-          icon: Plus,
-          onClick: handleCreate,
-          variant: 'default'
-        }
-      ] : []}
-    >
-      <div className="space-y-6">
-        {/* Create Form - Hidden above search */}
-        {showCreateForm && (
-          <div className="border rounded-lg p-4 bg-muted/20">
-            <h3 className="font-medium mb-4">Create {config.resourceName}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {config.fields.map(field => (
-                              <div key={field.key} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
-                <label className="block text-sm font-medium mb-1">{field.label}</label>
-                <FieldInput
-                  field={field}
-                  value={formData[field.key]}
-                  onChange={(value) => setFormData(prev => ({ ...prev, [field.key]: value }))}
-                />
-              </div>
-              ))}
-            </div>
-            <div className="flex gap-2 mt-4">
-              <Button onClick={handleSubmitCreate} size="sm" disabled={isSubmitting}>
-                <Check className="w-4 h-4 mr-2" />
-                {isSubmitting ? 'Creating...' : 'Create'}
+        );
+      case 'icon':
+        return (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-10 h-10 p-0 flex items-center justify-center"
+                type="button"
+              >
+                {value ? (
+                  (() => {
+                    const IconComponent = getIconComponent(value);
+                    return <IconComponent className="h-4 w-4 text-blue-600" />;
+                  })()
+                ) : (
+                  <div className="w-4 h-4 border-2 border-dashed border-muted-foreground rounded" />
+                )}
               </Button>
-              <Button variant="outline" onClick={handleCancelCreate} size="sm">
-                <X className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Search */}
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <IconPicker
+                selectedIcon={value}
+                onIconSelect={(icon) => setFormData(prev => ({ ...prev, [field.key]: icon }))}
+                className="border-0"
+              />
+            </PopoverContent>
+          </Popover>
+        );
+      case 'color':
+        const colorVal = value || '#6B7280';
+        return (
+          <div className="flex items-center gap-2">
+            <ColorPicker
+              selectedColor={colorVal}
+              onColorSelect={(color) => setFormData(prev => ({ ...prev, [field.key]: color }))}
+            />
             <Input
-              placeholder={`Search ${config.resourceName}...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-sm"
+              value={colorVal}
+              onChange={(e) => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
+              placeholder="#6B7280"
+              className="font-mono"
             />
           </div>
-          {!isOnline && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-              Offline
-            </Badge>
-          )}
-        </div>
-
-        {/* Content */}
-        {config.desktopTableRenderer ? (
-          config.desktopTableRenderer(sortedItems, resourceActions)
-        ) : (
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {config.fields.map(field => (
-                    <TableHead 
-                      key={field.key}
-                      className={cn(
-                        field.type === 'textarea' && 'w-1/3',
-                        field.type === 'text' && field.key === 'name' && 'w-48',
-                        field.type === 'select' && 'w-32',
-                        field.type === 'color' && 'w-24',
-                        field.type === 'switch' && 'w-32',
-                        field.type === 'icon' && 'w-32'
-                      )}
-                    >
-                      {field.label}
-                    </TableHead>
-                  ))}
-                  <TableHead className="text-right w-32">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedItems.map((item, index) => (
-                  <TableRow 
-                    key={`${item.id}-${index}`}
-                    className={config.onRowClick ? 'cursor-pointer hover:bg-muted/50' : ''}
-                    onClick={() => config.onRowClick?.(item)}
-                  >
-                    {editingId === item.id ? (
-                      <>
-                        {config.fields.map(field => (
-                          <TableCell key={field.key}>
-                            <FieldInput
-                              field={field}
-                              value={formData[field.key]}
-                              onChange={(value) => setFormData(prev => ({ ...prev, [field.key]: value }))}
-                            />
-                          </TableCell>
-                        ))}
-                        <TableCell className="text-right">
-                          <div className="flex gap-1 justify-end">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSubmitEdit(item.id)}
-                              disabled={isSubmitting}
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={handleCancelEdit}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </>
-                    ) : (
-                      <>
-                        {config.fields.map(field => (
-                          <TableCell 
-                            key={field.key}
-                            className={cn(
-                              config.editableField === field.key && config.actions?.includes('update') 
-                                ? 'cursor-pointer hover:bg-muted/50' 
-                                : ''
-                            )}
-                            onClick={(e) => {
-                              if (config.editableField === field.key && config.actions?.includes('update')) {
-                                e.stopPropagation(); // Prevent row click if it exists
-                                handleEdit(item);
-                              }
-                            }}
-                          >
-                            <FieldDisplay field={field} value={(item as any)[field.key]} />
-                          </TableCell>
-                        ))}
-                        <TableCell className="text-right">
-                          {(config.actions?.includes('delete') || config.actions?.includes('duplicate')) && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {config.actions?.includes('duplicate') && (
-                                  <DropdownMenuItem onClick={() => handleDuplicate(item)}>
-                                    <Copy className="w-4 h-4 mr-2" />
-                                    Duplicate
-                                  </DropdownMenuItem>
-                                )}
-                                {config.actions?.includes('delete') && (
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDelete(item)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </TableCell>
-                      </>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-
-        {sortedItems.length === 0 && !loading && (
-          <div className="text-center py-8 text-muted-foreground">
-            No {config.resourceName} found. {config.actions?.includes('create') && `Create your first ${config.resourceName} to get started.`}
-          </div>
-        )}
-      </div>
-    </SettingsPageLayout>
-  );
-}
-
-// Icon picker field component with popover
-function IconPickerField({ value, onChange }: { value: any; onChange: (value: any) => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  // Ensure we always have a proper value object
-  const currentValue = value || {
-    type: 'INITIALS',
-    color: '#6366F1',
-    icon: null,
-    emoji: null,
-    name: ''
-  };
-
-  const renderAvatarDisplay = () => {
-    switch (currentValue.type) {
-      case 'INITIALS':
-        return (
-          <div 
-            className="w-6 h-6 rounded flex items-center justify-center text-white text-xs font-semibold"
-            style={{ backgroundColor: currentValue.color }}
-          >
-            {currentValue.name ? currentValue.name.substring(0, 2).toUpperCase() : 'WS'}
-          </div>
         );
-      case 'ICON':
-        if (currentValue.icon) {
-          const IconComponent = getIconComponent(currentValue.icon);
+      case 'select':
+        const options = field.options?.actionPrefix ? getDropdownOptions(field.options.actionPrefix) : [];
+        
+        // Special handling for role field in member config
+        if (field.key === 'role' && config.actionPrefix === 'member') {
+          const roleOptions = [
+            { id: 'OWNER', name: 'Owner' },
+            { id: 'ADMIN', name: 'Admin' },
+            { id: 'MEMBER', name: 'Member' },
+            { id: 'GUEST', name: 'Guest' }
+          ];
+          
           return (
-            <div className="w-6 h-6 rounded flex items-center justify-center bg-gray-100">
-              <IconComponent className="w-4 h-4" style={{ color: currentValue.color }} />
-            </div>
+            <Select
+              value={value}
+              onValueChange={(val) => setFormData(prev => ({ ...prev, [field.key]: val }))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={`Select ${field.label}...`} />
+              </SelectTrigger>
+              <SelectContent>
+                {roleOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           );
         }
+        
         return (
-          <div className="w-6 h-6 rounded flex items-center justify-center bg-gray-100">
-            <Hash className="w-4 h-4" style={{ color: currentValue.color }} />
-          </div>
+          <Select
+            value={value}
+            onValueChange={(val) => setFormData(prev => ({ ...prev, [field.key]: val }))}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={`Select ${field.label}...`} />
+            </SelectTrigger>
+            <SelectContent>
+              {!field.required && (
+                <SelectItem value="__none__">
+                  <span className="text-muted-foreground">None</span>
+                </SelectItem>
+              )}
+              {options.map((option: BaseResource) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         );
-      case 'EMOJI':
+      case 'timezone':
+        const commonTimezones = [
+          { value: 'America/New_York', label: 'Eastern Time (ET)' },
+          { value: 'America/Chicago', label: 'Central Time (CT)' },
+          { value: 'America/Denver', label: 'Mountain Time (MT)' },
+          { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+          { value: 'UTC', label: 'UTC' },
+          { value: 'Europe/London', label: 'London (GMT)' },
+          { value: 'Europe/Paris', label: 'Paris (CET)' },
+          { value: 'Europe/Berlin', label: 'Berlin (CET)' },
+          { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+          { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
+          { value: 'Asia/Kolkata', label: 'India (IST)' },
+          { value: 'Australia/Sydney', label: 'Sydney (AEDT)' }
+        ];
         return (
-          <div className="w-6 h-6 rounded flex items-center justify-center bg-gray-100 text-sm">
-            {currentValue.emoji || '🚀'}
+          <Select
+            value={value}
+            onValueChange={(val) => setFormData(prev => ({ ...prev, [field.key]: val }))}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select timezone..." />
+            </SelectTrigger>
+            <SelectContent>
+              {commonTimezones.map((tz) => (
+                <SelectItem key={tz.value} value={tz.value}>
+                  {tz.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      case 'checkbox':
+        const isChecked = Boolean(formData[field.key]);
+        return (
+          <div className="flex items-center space-x-3">
+            <Switch
+              checked={isChecked}
+              onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, [field.key]: checked }))}
+            />
+            <label className="text-sm font-medium leading-none">
+              {field.label}
+            </label>
           </div>
         );
       default:
         return (
-          <div className="w-6 h-6 rounded flex items-center justify-center bg-gray-100">
-            <Hash className="w-4 h-4" style={{ color: currentValue.color }} />
-          </div>
+          <Input
+            value={value}
+            onChange={(e) => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
+            placeholder={field.label}
+          />
         );
     }
   };
 
+  // Get fields organized by layout groups
+  const getFieldsByGroup = () => {
+    const fields = editingItem ? (config.editFields || config.createFields) : config.createFields;
+    
+    const iconField = fields.find(f => f.type === 'icon');
+    const nameField = fields.find(f => f.key === 'name');
+    const identifierField = fields.find(f => f.key === 'identifier');
+    const descriptionField = fields.find(f => f.key === 'description');
+    const statusFlowField = fields.find(f => f.key === 'statusFlowId');
+    const fieldSetField = fields.find(f => f.key === 'fieldSetId');
+    const otherFields = fields.filter(f => 
+      !['icon', 'avatarIcon', 'name', 'identifier', 'description', 'statusFlowId', 'fieldSetId'].includes(f.key) &&
+      f.type !== 'icon'
+    );
+
+    return {
+      iconField,
+      nameField,
+      identifierField,
+      descriptionField,
+      statusFlowField,
+      fieldSetField,
+      otherFields
+    };
+  };
+
+  const fieldGroups = getFieldsByGroup();
+
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center gap-2 p-2 border border-gray-200 rounded-md hover:border-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
-          title="Click to customize avatar"
-        >
-          {renderAvatarDisplay()}
-          <span className="text-sm text-muted-foreground">Click to customize</span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent 
-        className="w-auto p-4" 
-        align="start" 
-        side="bottom" 
-        sideOffset={4}
-        collisionPadding={8}
-        avoidCollisions={true}
-      >
-        <IconPicker
-          selectedIcon={currentValue.icon}
-          selectedColor={currentValue.color}
-          selectedEmoji={currentValue.emoji}
-          selectedAvatarType={currentValue.type}
-          teamName={currentValue.name}
-          onIconSelect={(icon) => onChange({ ...currentValue, icon, type: 'ICON' })}
-          onColorSelect={(color) => onChange({ ...currentValue, color })}
-          onEmojiSelect={(emoji) => onChange({ ...currentValue, emoji, type: 'EMOJI' })}
-          onAvatarTypeSelect={(type) => onChange({ ...currentValue, type })}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-// Helper function for empty field styling
-function getFieldClassName(value: any, baseClassName?: string) {
-  return cn(
-    'transition-colors',
-    (!value || value === '') 
-      ? 'bg-slate-50/80 border-slate-200 text-slate-500 placeholder:text-slate-400' 
-      : 'bg-white border-input',
-    'focus:bg-white focus:border-slate-300 focus:text-slate-900',
-    baseClassName
-  );
-}
-
-// Field input component
-function FieldInput({ field, value, onChange }: { 
-  field: FieldConfig; 
-  value: any; 
-  onChange: (value: any) => void; 
-}) {
-  switch (field.type) {
-    case 'textarea':
-      return (
-        <Textarea
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-          rows={2}
-          className={getFieldClassName(value)}
-        />
-      );
-    case 'select':
-      return (
-        <Select value={value || ''} onValueChange={onChange}>
-          <SelectTrigger className={getFieldClassName(value)}>
-            <SelectValue placeholder={field.placeholder} />
-          </SelectTrigger>
-          <SelectContent>
-            {field.options?.map(option => (
-              <SelectItem 
-                key={typeof option === 'string' ? option : option.value} 
-                value={typeof option === 'string' ? option : option.value}
-              >
-                {typeof option === 'string' ? option : option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
-    case 'switch':
-      return (
-        <Switch
-          checked={value || false}
-          onCheckedChange={onChange}
-        />
-      );
-    case 'number':
-      return (
-        <Input
-          type="number"
-          value={value || ''}
-          onChange={(e) => onChange(Number(e.target.value))}
-          placeholder={field.placeholder}
-          className={getFieldClassName(value)}
-        />
-      );
-         case 'color':
-       return (
-         <ColorPicker
-           selectedColor={value || (field.options?.[0] ? (typeof field.options[0] === 'string' ? field.options[0] : field.options[0].value) : '#6B7280')}
-           onColorSelect={onChange}
-           colors={field.options?.map(color => typeof color === 'string' ? color : color.value)}
-         />
-       );
-    case 'icon':
-      return <IconPickerField value={value} onChange={onChange} />;
-    default:
-      return (
-        <Input
-          type={field.type}
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-          className={getFieldClassName(value)}
-        />
-      );
-  }
-}
-
-// Field display component
-function FieldDisplay({ field, value }: { field: FieldConfig; value: any }) {
-  if (!value) return <span className="text-muted-foreground">-</span>;
-  
-  switch (field.type) {
-    case 'color':
-      return (
-        <div className="flex items-center gap-2">
-          <div
-            className="w-5 h-5 rounded-full border"
-            style={{ backgroundColor: value }}
+    <SettingsPageLayout title={title || `${config.name}s`} description={description || `Manage ${config.name.toLowerCase()}s in your workspace`}>
+      {/* Header with search and create */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={`Search ${config.name.toLowerCase()}s...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
           />
-          <span>{value}</span>
         </div>
-      );
-    case 'switch':
-      return value ? (
-        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Yes</span>
-      ) : (
-        <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">No</span>
-      );
-    case 'icon':
-      if (!value) return <span className="text-muted-foreground">-</span>;
-      
-      const iconComponent = value.icon && getIconComponent(value.icon);
-      
-      return (
-        <div className="flex items-center gap-2">
-          {value.type === 'INITIALS' && (
-            <div 
-              className="w-5 h-5 rounded flex items-center justify-center text-white text-xs font-semibold"
-              style={{ backgroundColor: value.color || '#6366F1' }}
+        
+        <div className="flex items-center gap-3">
+          {/* Offline indicator */}
+          {isOffline && (
+            <Badge variant="outline" className="text-orange-600">
+              Offline {pendingCount > 0 && `(${pendingCount} pending)`}
+            </Badge>
+          )}
+          
+          <Button onClick={handleCreate} className="bg-black hover:bg-black/90">
+            <Plus className="h-4 w-4 mr-2" />
+            New {config.name}
+          </Button>
+        </div>
+      </div>
+
+      {/* Create/Edit Form */}
+      {showCreateForm && (
+        <div className="bg-card rounded-lg border p-6 mb-6">
+          <h3 className="text-lg font-medium mb-4">
+            {editingItem ? `Edit ${config.name}` : `Create ${config.name}`}
+          </h3>
+          
+          <div className="space-y-4">
+            {/* Row 1: Icon + Name + Identifier */}
+            <div className="flex items-start gap-4">
+              {fieldGroups.iconField && (
+                <div className="flex-shrink-0">
+                  <label className="text-sm font-medium block mb-2">
+                    {fieldGroups.iconField.label}
+                    {fieldGroups.iconField.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  {renderFormField(fieldGroups.iconField)}
+                </div>
+              )}
+              {fieldGroups.nameField && (
+                <div className="flex-1">
+                  <label className="text-sm font-medium block mb-2">
+                    {fieldGroups.nameField.label}
+                    {fieldGroups.nameField.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  <Input
+                    value={(formData[fieldGroups.nameField?.key || 'name'] as string) || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const nameKey = fieldGroups.nameField?.key || 'name';
+                      setFormData(prev => {
+                        const newData = { ...prev, [nameKey]: value };
+                        
+                        // Auto-populate identifier with first 3 characters (only if identifier exists and is empty or auto-generated)
+                        if (fieldGroups.identifierField && (!prev[fieldGroups.identifierField.key] || prev[fieldGroups.identifierField.key].length <= 3)) {
+                          newData[fieldGroups.identifierField.key] = value.slice(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                        }
+                        
+                        return newData;
+                      });
+                    }}
+                    placeholder={fieldGroups.nameField?.label || 'Name'}
+                  />
+                </div>
+              )}
+              {fieldGroups.identifierField && (
+                <div className="w-32">
+                  <label className="text-sm font-medium block mb-2">
+                    {fieldGroups.identifierField.label}
+                    {fieldGroups.identifierField.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  <Input
+                    value={(formData[fieldGroups.identifierField?.key || 'identifier'] as string) || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                      const identifierKey = fieldGroups.identifierField?.key || 'identifier';
+                      setFormData(prev => ({ ...prev, [identifierKey]: value }));
+                    }}
+                    placeholder={fieldGroups.identifierField?.label || 'Identifier'}
+                    className="font-mono"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Row 2: Description (full width) */}
+            {fieldGroups.descriptionField && (
+              <div className="w-full">
+                <label className="text-sm font-medium block mb-2">
+                  {fieldGroups.descriptionField.label}
+                  {fieldGroups.descriptionField.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                {renderFormField(fieldGroups.descriptionField)}
+              </div>
+            )}
+
+            {/* Row 3: Status Flow + Field Set */}
+            <div className="grid grid-cols-2 gap-4">
+              {fieldGroups.statusFlowField && (
+                <div>
+                  <label className="text-sm font-medium block mb-2">
+                    {fieldGroups.statusFlowField.label}
+                    {fieldGroups.statusFlowField.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  {renderFormField({
+                    ...fieldGroups.statusFlowField,
+                    options: { actionPrefix: 'statusFlow' }
+                  })}
+                </div>
+              )}
+              {fieldGroups.fieldSetField && (
+                <div>
+                  <label className="text-sm font-medium block mb-2">
+                    {fieldGroups.fieldSetField.label}
+                    {fieldGroups.fieldSetField.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  {renderFormField({
+                    ...fieldGroups.fieldSetField,
+                    options: { actionPrefix: 'fieldSet' }
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Other fields */}
+            {fieldGroups.otherFields.length > 0 && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {fieldGroups.otherFields.map(field => (
+                  <div key={field.key} className="space-y-2">
+                    <label className="text-sm font-medium">
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {renderFormField(field)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmit}
+              disabled={create.isPending || update.isPending}
+              className="bg-black hover:bg-black/90"
             >
-              {value.name ? value.name.substring(0, 2).toUpperCase() : 'WS'}
-            </div>
-          )}
-          {value.type === 'ICON' && iconComponent && (
-            <div className="w-5 h-5 rounded flex items-center justify-center bg-gray-100">
-              {React.createElement(iconComponent, { 
-                className: "w-3 h-3", 
-                style: { color: value.color || '#6366F1' } 
-              })}
-            </div>
-          )}
-          {value.type === 'EMOJI' && (
-            <div className="w-5 h-5 rounded flex items-center justify-center bg-gray-100 text-xs">
-              {value.emoji}
-            </div>
-          )}
-          <span className="text-xs text-muted-foreground capitalize">
-            {value.type?.toLowerCase() || 'initials'}
-          </span>
+              {editingItem ? 'Update' : 'Create'}
+            </Button>
+          </div>
         </div>
-      );
-    case 'email':
-      return <a href={`mailto:${value}`} className="text-blue-600 hover:underline">{value}</a>;
-    default:
-      return <span className="font-medium">{value}</span>;
-  }
+      )}
+
+      {/* Data Table */}
+      <div className="bg-card rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {config.displayFields.map(field => (
+                <TableHead key={field} className="font-medium">
+                  {field === 'avatarIcon' ? 'Avatar' : 
+                   field === 'isPrivate' ? 'Private' :
+                   field === 'timezone' ? 'Time Zone' :
+                   field === 'statusFlowId' ? 'Status Flow' :
+                   field === 'fieldSetId' ? 'Field Set' :
+                   field === 'displayName' ? 'Display Name' :
+                   field === 'lastName' ? 'Last Name' :
+                   field === 'teams' ? 'Teams' :
+                   field === 'status' ? 'Status' :
+                   field.charAt(0).toUpperCase() + field.slice(1)}
+                </TableHead>
+              ))}
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={config.displayFields.length + 1} className="text-center py-8">
+                  Loading {config.name.toLowerCase()}s...
+                </TableCell>
+              </TableRow>
+            ) : filteredItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={config.displayFields.length + 1} className="text-center py-8">
+                  {searchQuery ? 'No matching results found.' : `No ${config.name.toLowerCase()}s found.`}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredItems.map((item: BaseResource) => (
+                <TableRow key={item.id}>
+                  {config.displayFields.map(field => (
+                    <TableCell key={field}>
+                      {(field === 'icon' || field === 'avatarIcon') && (item as any)[field] ? (
+                        <div className="w-8 h-8 flex items-center justify-center border rounded bg-gray-50">
+                          {(() => {
+                            const IconComponent = getIconComponent((item as any)[field]);
+                            return <IconComponent className="h-4 w-4 text-blue-600" />;
+                          })()}
+                        </div>
+                      ) : field === 'avatarIcon' && config.actionPrefix === 'member' ? (
+                        <div className="w-8 h-8 flex items-center justify-center border rounded bg-gray-50 text-sm font-medium">
+                          {(() => {
+                            const member = item as any;
+                            if (member.avatarIcon) {
+                              const IconComponent = getIconComponent(member.avatarIcon);
+                              return <IconComponent className="h-4 w-4 text-blue-600" />;
+                            } else if (member.avatarEmoji) {
+                              return <span className="text-sm">{member.avatarEmoji}</span>;
+                            } else if (member.avatarImageUrl) {
+                              return <img src={member.avatarImageUrl} alt="Avatar" className="w-8 h-8 rounded" />;
+                            } else {
+                              // Show initials
+                              const initials = member.name ? member.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '?';
+                              return <span className="text-xs font-medium text-gray-600">{initials}</span>;
+                            }
+                          })()}
+                        </div>
+                      ) : field === 'isPrivate' ? (
+                        <Badge variant={(item as any)[field] ? 'secondary' : 'outline'}>
+                          {(item as any)[field] ? 'Private' : 'Public'}
+                        </Badge>
+                      ) : field === 'timezone' ? (
+                        (() => {
+                          const tz = (item as any)[field];
+                          if (!tz) return '-';
+                          // Show a shorter, friendlier timezone label
+                          const tzLabels: Record<string, string> = {
+                            'America/New_York': 'ET',
+                            'America/Chicago': 'CT',
+                            'America/Denver': 'MT',
+                            'America/Los_Angeles': 'PT',
+                            'UTC': 'UTC',
+                            'Europe/London': 'GMT',
+                            'Europe/Paris': 'CET',
+                            'Europe/Berlin': 'CET',
+                            'Asia/Tokyo': 'JST',
+                            'Asia/Shanghai': 'CST',
+                            'Asia/Kolkata': 'IST',
+                            'Australia/Sydney': 'AEDT'
+                          };
+                          return tzLabels[tz] || tz;
+                        })()
+                      ) : field === 'statusFlowId' ? (
+                        (() => {
+                          const id = (item as any)[field];
+                          if (!id) return '-';
+                          const statusFlow = getDropdownOptions('statusFlow').find((sf: any) => sf.id === id);
+                          return statusFlow?.name || '-';
+                        })()
+                      ) : field === 'fieldSetId' ? (
+                        (() => {
+                          const id = (item as any)[field];
+                          if (!id) return '-';
+                          const fieldSet = getDropdownOptions('fieldSet').find((fs: any) => fs.id === id);
+                          return fieldSet?.name || '-';
+                        })()
+                      ) : field === 'teams' && config.actionPrefix === 'member' ? (
+                        (() => {
+                          const member = item as any;
+                          const teams = member.teams || [];
+                          const isExpanded = expandedTeams.has(member.id);
+                          
+                          if (teams.length === 0) {
+                            return <span className="text-muted-foreground">No teams</span>;
+                          }
+                          
+                          return (
+                            <div className="space-y-1">
+                              <button
+                                onClick={() => setExpandedTeams(prev => {
+                                  const newSet = new Set(prev);
+                                  if (isExpanded) {
+                                    newSet.delete(member.id);
+                                  } else {
+                                    newSet.add(member.id);
+                                  }
+                                  return newSet;
+                                })}
+                                className="flex items-center gap-1 text-sm hover:text-blue-600 transition-colors"
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="h-3 w-3" />
+                                ) : (
+                                  <ChevronRight className="h-3 w-3" />
+                                )}
+                                <span>{teams.length} team{teams.length > 1 ? 's' : ''}</span>
+                              </button>
+                              {isExpanded && (
+                                <div className="ml-4 space-y-1">
+                                  {teams.map((team: any) => (
+                                    <div key={team.id} className="flex items-center gap-2 text-sm">
+                                      <span className="font-medium">{team.name}</span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {team.role}
+                                      </Badge>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()
+                      ) : field === 'status' && config.actionPrefix === 'member' ? (
+                        (() => {
+                          const status = (item as any)[field];
+                          const statusConfig = {
+                            'ACTIVE': { label: 'Active', variant: 'default' as const, className: 'bg-green-100 text-green-800' },
+                            'PENDING': { label: 'Invited', variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800' },
+                            'DISABLED': { label: 'Disabled', variant: 'outline' as const, className: 'bg-gray-100 text-gray-800' }
+                          };
+                          
+                          const statusDisplay = statusConfig[status as keyof typeof statusConfig] || statusConfig['ACTIVE'];
+                          
+                          return (
+                            <Badge variant={statusDisplay.variant} className={statusDisplay.className}>
+                              {statusDisplay.label}
+                            </Badge>
+                          );
+                        })()
+                      ) : (
+                        (item as any)[field] || '-'
+                      )}
+                    </TableCell>
+                  ))}
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(item)}>
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        
+                        {config.actionPrefix === 'member' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            {(item as any).status === 'PENDING' && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleMemberAction(item, 'resend')}>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Resend Invitation
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleMemberAction(item, 'revoke')}>
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Revoke Invitation
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            
+                            {(item as any).status === 'ACTIVE' && (
+                              <DropdownMenuItem onClick={() => handleMemberAction(item, 'disable')}>
+                                <UserX className="h-4 w-4 mr-2" />
+                                Disable Member
+                              </DropdownMenuItem>
+                            )}
+                            
+                            {(item as any).status === 'DISABLED' && (
+                              <DropdownMenuItem onClick={() => handleMemberAction(item, 'enable')}>
+                                <Shield className="h-4 w-4 mr-2" />
+                                Enable Member
+                              </DropdownMenuItem>
+                            )}
+                            
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteWithConfirmation(item)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+             {error && (
+         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+           <p className="text-red-600">Error loading {config.name.toLowerCase()}s</p>
+         </div>
+       )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+        isLoading={deleteResource.isPending}
+      />
+    </SettingsPageLayout>
+  );
 }
 
-// Default mobile card renderer
-function DefaultMobileCard<T>({ 
-  item, 
-  actions, 
-  fields 
-}: { 
-  item: T; 
-  actions: ResourceActions<T>; 
-  fields: FieldConfig[];
-}) {
-  const primaryField = fields[0];
-  const secondaryField = fields[1];
+/*
+USAGE EXAMPLES:
+
+// For a simple resource like Teams:
+const TeamSettingsPage = () => {
+  const config = generateResourceConfig('team');
+  return <ResourceSettingsPage config={config} />;
+};
+
+// For Members with enhanced features:
+const MembersSettingsPage = () => {
+  const config = generateResourceConfig('member');
+  return <ResourceSettingsPage config={config} />;
+};
+
+// For a more complex resource like Projects:
+const ProjectSettingsPage = () => {
+  const config = generateResourceConfig('project');
+  return <ResourceSettingsPage config={config} />;
+};
+
+// For a completely custom resource:
+const CustomResourcePage = () => {
+  const config = generateResourceConfig('customResource', {
+    displayFields: ['name', 'customField', 'status'],
+    createFields: [
+      { key: 'name', label: 'Name', type: 'text', required: true },
+      { key: 'customField', label: 'Custom Field', type: 'text' },
+      { key: 'status', label: 'Status', type: 'select', required: true }
+    ]
+  });
+  return <ResourceSettingsPage config={config} />;
+};
+
+// For new resources (very DRY):
+const NewResourcePage = () => {
+  return <ResourceSettingsPage config={generateResourceConfig('newResource')} />;
+};
+
+// Manual hook usage (if needed):
+const ManualHookUsage = () => {
+  const { data: teams } = teamHooks.useList();
+  const createTeam = teamHooks.useCreate();
+  const updateTeam = teamHooks.useUpdate();
+  const deleteTeam = teamHooks.useDelete();
   
-  return (
-    <SwipeCard
-      leftActions={[
-        {
-          icon: <Edit2 className="h-4 w-4" />,
-          label: 'Edit',
-          onClick: () => actions.onEdit(item)
-        }
-      ]}
-      rightActions={[
-        ...(actions.onDuplicate ? [{
-          icon: <Copy className="h-4 w-4" />,
-          label: 'Duplicate',
-          onClick: () => actions.onDuplicate!(item)
-        }] : []),
-        {
-          icon: <Trash2 className="h-4 w-4" />,
-          label: 'Delete',
-          onClick: () => actions.onDelete(item),
-          variant: 'destructive' as const
-        }
-      ]}
-    >
-      <div className="p-4">
-        <div className="font-medium text-slate-900">
-          {(item as any)[primaryField.key]}
-        </div>
-        {secondaryField && (
-          <div className="text-sm text-slate-600 mt-1">
-            {(item as any)[secondaryField.key]}
-          </div>
-        )}
-      </div>
-    </SwipeCard>
-  );
-} 
+  // Usage:
+  // createTeam.mutate({ name: 'New Team' });
+  // updateTeam.mutate('team-id', { name: 'Updated Team' });
+  // deleteTeam.mutate('team-id');
+};
+*/ 

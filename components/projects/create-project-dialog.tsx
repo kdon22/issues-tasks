@@ -22,7 +22,7 @@ import {
 import { IconPicker, getIconComponent } from '@/components/ui/icon-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { useResource } from '@/lib/hooks/use-resource';
+import { useTeams, useMembers } from '@/lib/hooks';
 import { toast } from 'sonner';
 
 interface CreateProjectDialogProps {
@@ -130,25 +130,37 @@ export function CreateProjectDialog({
     iconColor: '#6366F1'
   });
 
-  const { items: teams, loading: loadingTeams } = useResource<Team>({
-    endpoint: `/api/workspaces/${workspaceUrl}/teams`,
-    cacheKey: `workspace-${workspaceUrl}-teams`
-  });
+  // const { state: teamsState } = useCachedResource<Team>({
+  //   resource: 'teams',
+  //   cacheKey: 'teams',
+  //   optimisticUpdates: true,
+  //   showToasts: true,
+  //   autoSync: true,
+  //   refreshInterval: 300000
+  // });
 
-  const { items: users, loading: loadingUsers } = useResource<User>({
-    endpoint: `/api/workspaces/${workspaceUrl}/members`,
-    cacheKey: `workspace-${workspaceUrl}-members`
-  });
+  // const { state: usersState } = useCachedResource<User>({
+  //   resource: 'users',
+  //   cacheKey: 'users',
+  //   optimisticUpdates: false,
+  //   showToasts: false,
+  //   autoSync: false,
+  //   refreshInterval: 600000
+  // });
+
+  // Extract items from state with proper typing
+  const { data: teams = [], isLoading: loadingTeams } = useTeams();
+  const { data: users = [], isLoading: loadingUsers } = useMembers();
 
   // Transform teams for MultiSelect
-  const teamOptions = teams.map(team => ({
+  const teamOptions = teams.map((team: Team) => ({
     value: team.id,
     label: team.name,
     icon: Building2
   }));
 
-  const selectedTeams = teams.filter(team => formData.teamIds.includes(team.id));
-  const leadUser = users.find(u => u.id === formData.leadUserId);
+  const selectedTeams = teams.filter((team: Team) => formData.teamIds.includes(team.id));
+  const leadUser = users.find((u: User) => u.id === formData.leadUserId);
 
   // Auto-generate identifier from name for icon
   const projectInitials = formData.name
@@ -289,7 +301,7 @@ export function CreateProjectDialog({
         await Promise.all(projectTeamPromises);
       }
 
-      toast.success('Project created successfully!');
+      
       onOpenChange(false);
       // Form reset is handled automatically by Modal's onReset prop
 
@@ -297,7 +309,7 @@ export function CreateProjectDialog({
       if (onProjectCreated) {
         onProjectCreated(project);
       } else {
-        router.push(`/workspace/${workspaceUrl}/projects/${project.id}`);
+        router.push(`/workspaces/${workspaceUrl}/projects/${project.id}`);
       }
     } catch (error) {
       console.error('Failed to create project:', error);

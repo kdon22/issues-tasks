@@ -1,4 +1,4 @@
-// App Header Component - Linear Clone
+// App Header Component - 
 "use client";
 
 import { cn } from '@/lib/utils';

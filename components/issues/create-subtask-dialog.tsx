@@ -1,48 +1,32 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, X, User, Loader2 } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Modal, ModalHeader, ModalBody, ModalFooter, ModalTitle } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle 
-} from '@/components/ui/dialog';
-import { 
-  Form, 
-  FormControl, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from '@/components/ui/form';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { IssueTypePicker } from './issue-type-picker';
-import { StateBadge } from '@/components/ui/state-badge';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PriorityBadge } from '@/components/ui/priority-badge';
+import { StateBadge } from '@/components/ui/state-badge';
 import { cn } from '@/lib/utils';
+import { useCreateIssue, useActionQuery } from '@/lib/hooks';
+import { toast } from 'sonner';
+import { IssueTypePicker } from './issue-type-picker';
+import { StatusSelector } from './status-selector';
 
-// Validation schema for subtask creation
+// Validation schema for subtask creation (only title required)
 const createSubtaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
   description: z.string().optional(),
-  priority: z.enum(['NO_PRIORITY', 'LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
+  priority: z.enum(['NO_PRIORITY', 'LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM').optional(),
   assigneeId: z.string().optional(),
-  stateId: z.string().min(1, 'State is required'),
-  issueTypeId: z.string().min(1, 'Issue type is required'),
+  stateId: z.string().optional(), // Optional - will use sensible defaults
+  issueTypeId: z.string().optional(), // Optional - will use sensible defaults
   projectId: z.string().optional(),
   estimate: z.number().min(0).optional(),
 });
@@ -67,8 +51,8 @@ interface IssueType {
   id: string;
   name: string;
   icon?: string | null;
-  color: string;
   description?: string | null;
+  fieldSetId?: string | null;
 }
 
 interface Project {
@@ -111,12 +95,25 @@ export function CreateSubtaskDialog({
   projects,
   onSubtaskCreated
 }: CreateSubtaskDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedIssueType, setSelectedIssueType] = useState<IssueType | null>(null);
-
-  // Debug logging
-  console.log('CreateSubtaskDialog function called with open:', open);
-  console.log('Dialog props:', { parentIssue, workspaceUrl, issueTypes: issueTypes.length, states: states.length, members: members.length, projects: projects.length });
+  const [availableStates, setAvailableStates] = useState<State[]>(states);
+  const [fieldConfigurations, setFieldConfigurations] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Use action hooks
+  const { createIssue } = useCreateIssue();
+  
+  // Query for states based on selected issue type
+  const { data: statesData } = useActionQuery<State[]>(
+    `issueType.${selectedIssueType?.id}.states`,
+    { enabled: !!selectedIssueType }
+  );
+  
+  // Query for field configurations based on selected issue type's field set
+  const { data: fieldConfigData } = useActionQuery<any[]>(
+    `fieldSet.${selectedIssueType?.fieldSetId}.configurations`,
+    { enabled: !!selectedIssueType?.fieldSetId }
+  );
 
   const form = useForm<CreateSubtaskForm>({
     resolver: zodResolver(createSubtaskSchema),
@@ -124,61 +121,65 @@ export function CreateSubtaskDialog({
       title: '',
       description: '',
       priority: 'MEDIUM',
-      assigneeId: '',
-      stateId: '',
-      issueTypeId: '',
-      projectId: parentIssue.projectId || '',
+      issueTypeId: undefined,
+      stateId: undefined,
+      assigneeId: undefined,
+      projectId: parentIssue.projectId || undefined,
       estimate: undefined,
-    }
+    },
   });
 
-  // Set default issue type (subtask type if available)
+  // Update states when data changes
   useEffect(() => {
-    if (issueTypes.length > 0 && !selectedIssueType) {
-      const subtaskType = issueTypes.find(type => type.icon === 'subtask');
-      const defaultType = subtaskType || issueTypes[0];
-      setSelectedIssueType(defaultType);
-      form.setValue('issueTypeId', defaultType.id);
+    if (statesData) {
+      setAvailableStates(statesData);
+      
+      // Reset state selection when issue type changes
+      form.setValue('stateId', undefined);
+      
+      // Set new default state
+      const defaultState = statesData.find((state: State) => state.type === 'UNSTARTED') || statesData[0];
+      if (defaultState) {
+        form.setValue('stateId', defaultState.id);
+      }
+    } else {
+      setAvailableStates(states);
     }
-  }, [issueTypes, selectedIssueType, form]);
+  }, [statesData, states, form]);
 
-  // Set default state (first unstarted state if available)
+  // Update field configurations when data changes
   useEffect(() => {
-    if (states.length > 0 && !form.getValues('stateId')) {
-      const defaultState = states.find(state => state.type === 'UNSTARTED') || states[0];
-      form.setValue('stateId', defaultState.id);
+    if (fieldConfigData) {
+      setFieldConfigurations(fieldConfigData);
+    } else if (selectedIssueType && !selectedIssueType.fieldSetId) {
+      // No field set associated, clear configurations (will use defaults)
+      setFieldConfigurations([]);
     }
-  }, [states, form]);
+  }, [fieldConfigData, selectedIssueType]);
 
   const onSubmit = async (data: CreateSubtaskForm) => {
     setIsSubmitting(true);
     
     try {
-      // Create subtask using workspace CRUD factory [[memory:2245441]]
-      const response = await fetch(`/api/workspaces/${workspaceUrl}/issues`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...data,
-          parentId: parentIssue.id,
-          teamId: parentIssue.teamId,
-          // Convert empty strings to null for optional fields
-          assigneeId: data.assigneeId || null,
-          projectId: data.projectId || null,
-          estimate: data.estimate || null,
-        }),
+      const result = await createIssue({
+        ...data,
+        parentId: parentIssue.id,
+        teamId: parentIssue.teamId,
+        // Convert empty strings to null for optional fields
+        assigneeId: data.assigneeId || null,
+        projectId: data.projectId || null,
+        stateId: data.stateId || null, // Backend will provide default if null
+        issueTypeId: data.issueTypeId || null, // Backend will provide default if null
+        estimate: data.estimate || null,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to create subtask');
-      }
-
-      const result = await response.json();
       
-      // Call success callback
-      onSubtaskCreated?.(result.data);
+      // Show success message
+      toast.success('Subtask created successfully');
+      
+      // Call success callback with the actual created subtask data
+      if (onSubtaskCreated && result) {
+        onSubtaskCreated(result);
+      }
       
       // Close dialog and reset form
       onOpenChange(false);
@@ -187,7 +188,7 @@ export function CreateSubtaskDialog({
       
     } catch (error) {
       console.error('Error creating subtask:', error);
-      // You might want to show a toast notification here
+      toast.error('Failed to create subtask');
     } finally {
       setIsSubmitting(false);
     }
@@ -199,27 +200,195 @@ export function CreateSubtaskDialog({
     setSelectedIssueType(null);
   };
 
-  console.log('About to render Dialog with open:', open);
+  // Helper function to check if a field should be shown
+  const shouldShowField = (fieldKey: string) => {
+    if (fieldConfigurations.length === 0) {
+      // Fallback to showing default fields if no configuration
+      return ['priority', 'assignee', 'project', 'estimate'].includes(fieldKey);
+    }
+    return fieldConfigurations.some(config => config.fieldKey === fieldKey && config.showOnNewIssue);
+  };
+
+  // Get sorted fields for dynamic rendering
+  const getSortedFields = () => {
+    if (fieldConfigurations.length === 0) {
+      return ['priority', 'assignee', 'project', 'estimate'];
+    }
+    return fieldConfigurations
+      .filter(config => config.showOnNewIssue)
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map(config => config.fieldKey);
+  };
+
+  // Render field components dynamically
+  const renderField = (fieldKey: string) => {
+    if (!shouldShowField(fieldKey)) return null;
+
+    switch (fieldKey) {
+      case 'priority':
+        return (
+          <FormField
+            key="priority"
+            control={form.control}
+            name="priority"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Priority</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value || 'MEDIUM'}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="NO_PRIORITY">
+                      <PriorityBadge priority="NO_PRIORITY" />
+                    </SelectItem>
+                    <SelectItem value="LOW">
+                      <PriorityBadge priority="LOW" />
+                    </SelectItem>
+                    <SelectItem value="MEDIUM">
+                      <PriorityBadge priority="MEDIUM" />
+                    </SelectItem>
+                    <SelectItem value="HIGH">
+                      <PriorityBadge priority="HIGH" />
+                    </SelectItem>
+                    <SelectItem value="URGENT">
+                      <PriorityBadge priority="URGENT" />
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'assignee':
+        return (
+          <FormField
+            key="assignee"
+            control={form.control}
+            name="assigneeId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Assignee <span className="text-xs text-gray-500">(optional)</span></FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Unassigned" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="">
+                      <span className="text-gray-500">Unassigned</span>
+                    </SelectItem>
+                    {members.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
+                            {(member.name || member.email).charAt(0).toUpperCase()}
+                          </div>
+                                                      <span>{member.name || member.email}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'project':
+        return (
+          <FormField
+            key="project"
+            control={form.control}
+            name="projectId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Project</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select project" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="">
+                      <span className="text-gray-500">No project</span>
+                    </SelectItem>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: project.color || '#6366F1' }}
+                          />
+                          <span>{project.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'estimate':
+        return (
+          <FormField
+            key="estimate"
+            control={form.control}
+            name="estimate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Estimate (Story Points)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="Enter estimate..."
+                    {...field}
+                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                    className="bg-white dark:bg-gray-800"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
+
   
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Plus className="w-5 h-5 text-blue-600" />
-            Create Subtask
-          </DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            Creating a subtask for <span className="font-medium">{parentIssue.identifier}</span>
-          </p>
-        </DialogHeader>
+    <Modal open={open} onOpenChange={handleClose} className="sm:max-w-[600px]">
+      {/* Header */}
+      <ModalHeader>
+        <ModalTitle className="flex items-center gap-2">
+          <Plus className="w-5 h-5 text-blue-600" />
+          Create Subtask
+        </ModalTitle>
+        <p className="text-sm text-muted-foreground">
+          Creating a subtask for <span className="font-medium">{parentIssue.identifier}</span>
+        </p>
+      </ModalHeader>
 
+      <ModalBody className="max-h-[60vh] overflow-y-auto">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Issue Type Selection - The "Paper Icon" feature */}
+            {/* Issue Type Selection - Optional, will use sensible defaults */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Issue Type</label>
+              <label className="text-sm font-medium">Issue Type <span className="text-xs text-gray-500">(optional)</span></label>
               <IssueTypePicker 
                 issueTypes={issueTypes}
                 selectedIssueType={selectedIssueType}
@@ -227,7 +396,7 @@ export function CreateSubtaskDialog({
                   setSelectedIssueType(issueType);
                   form.setValue('issueTypeId', issueType.id);
                 }}
-                placeholder="Select issue type"
+                placeholder="Auto-select subtask type"
               />
             </div>
 
@@ -270,190 +439,67 @@ export function CreateSubtaskDialog({
               )}
             />
 
-            {/* Priority and State Row */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="NO_PRIORITY">
-                          <PriorityBadge priority="NO_PRIORITY" />
-                        </SelectItem>
-                        <SelectItem value="LOW">
-                          <PriorityBadge priority="LOW" />
-                        </SelectItem>
-                        <SelectItem value="MEDIUM">
-                          <PriorityBadge priority="MEDIUM" />
-                        </SelectItem>
-                        <SelectItem value="HIGH">
-                          <PriorityBadge priority="HIGH" />
-                        </SelectItem>
-                        <SelectItem value="URGENT">
-                          <PriorityBadge priority="URGENT" />
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="stateId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>State</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select state" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {states.map((state) => (
-                          <SelectItem key={state.id} value={state.id}>
-                            <div className="flex items-center gap-2">
-                              <StateBadge state={state.type as any} />
-                              <span>{state.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Assignee and Project Row */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="assigneeId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assignee</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Assign to member" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-gray-400" />
-                            <span>Unassigned</span>
-                          </div>
-                        </SelectItem>
-                        {members.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-4 w-4">
-                                <AvatarFallback className="text-xs">
-                                  {(member.name || member.email).charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span>{member.name || member.email}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="projectId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select project" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="">
-                          <span className="text-gray-500">No project</span>
-                        </SelectItem>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: project.color || '#6366F1' }}
-                              />
-                              <span>{project.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Estimate */}
+            {/* State Row - Always shown first */}
             <FormField
               control={form.control}
-              name="estimate"
+              name="stateId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Estimate (Story Points)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="Enter estimate..."
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                      className="bg-white dark:bg-gray-800"
-                    />
-                  </FormControl>
+                  <FormLabel>State <span className="text-xs text-gray-500">(optional)</span></FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Auto-select default state" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableStates.map((state) => (
+                        <SelectItem key={state.id} value={state.id}>
+                          <div className="flex items-center gap-2">
+                            <StateBadge state={state.type as any} />
+                            <span>{state.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Subtask
-                  </>
-                )}
-              </Button>
+            {/* Dynamic Fields based on Field Set Configuration */}
+            <div className="space-y-6">
+              {getSortedFields().map(fieldKey => renderField(fieldKey))}
             </div>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </ModalBody>
+
+      <ModalFooter>
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting || !form.watch('title')?.trim()}
+            onClick={form.handleSubmit(onSubmit)}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Subtask
+              </>
+            )}
+          </Button>
+        </div>
+      </ModalFooter>
+    </Modal>
   );
 } 

@@ -1,5 +1,14 @@
-// Individual Field Configuration API Route - Linear Clone (2 lines!)
-import { createItemHandlers } from '@/lib/api/crud-factory';
-import { fieldConfigurationsConfig } from '@/lib/api/configs/field-configurations';
+import { NextResponse } from 'next/server';
 
-export const { GET, PUT, DELETE } = createItemHandlers(fieldConfigurationsConfig); 
+// Legacy field configurations endpoint - NOT SUPPORTED in new system
+export async function GET() {
+  return NextResponse.json({ error: 'Legacy field configurations API not supported. Use new resource system.' }, { status: 501 });
+}
+
+export async function PUT() {
+  return NextResponse.json({ error: 'Legacy field configurations API not supported. Use new resource system.' }, { status: 501 });
+}
+
+export async function DELETE() {
+  return NextResponse.json({ error: 'Legacy field configurations API not supported. Use new resource system.' }, { status: 501 });
+} 

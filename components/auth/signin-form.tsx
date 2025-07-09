@@ -1,4 +1,4 @@
-// Sign-in Form Component - Linear Clone
+// Sign-in Form Component - 
 "use client";
 
 import { useState } from "react";
@@ -35,7 +35,7 @@ export function SignInForm() {
         if (response.ok) {
           const data = await response.json();
           if (data.workspaceUrl) {
-            router.push(`/workspace/${data.workspaceUrl}`);
+            router.push(`/workspaces/${data.workspaceUrl}`);
           } else {
             // No workspace found, redirect to home
             router.push("/");
@@ -60,7 +60,7 @@ export function SignInForm() {
       if (response.ok) {
         const data = await response.json();
         if (data.workspaceUrl) {
-          router.push(`/workspace/${data.workspaceUrl}`);
+          router.push(`/workspaces/${data.workspaceUrl}`);
         } else {
           router.push("/");
         }
@@ -74,7 +74,7 @@ export function SignInForm() {
     <Card className="w-full max-w-md">
       <CardHeader>
         <CardTitle className="text-2xl font-bold text-center">
-          Sign in to Linear Clone
+          Sign in to 
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

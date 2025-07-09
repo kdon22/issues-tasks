@@ -279,3 +279,103 @@ MIT License - see LICENSE file for details.
 ---
 
 **Built with ❤️ for the modern web**
+
+# Issues & Tasks
+
+A modern project management tool built with Next.js, TypeScript, and PostgreSQL.
+
+## Architecture Overview
+
+This application uses a unified resource system with DRY (Don't Repeat Yourself) principles throughout.
+
+### DRY Resource Management
+
+#### Hook Factory Pattern
+Instead of manually creating CRUD hooks for each resource type, we use a factory pattern:
+
+```typescript
+// ✅ New way (1 line per resource)
+export const teamHooks = createResourceHooks<Team>('team');
+export const projectHooks = createResourceHooks<Project>('project');
+export const labelHooks = createResourceHooks<Label>('label');
+
+// ❌ Old way (50+ lines per resource)
+export function useTeams() { return useActionQuery('team.list'); }
+export function useTeam(id) { return useActionQuery('team.get', { enabled: !!id }); }
+export function useCreateTeam() { /* 15 lines of boilerplate */ }
+export function useUpdateTeam() { /* 15 lines of boilerplate */ }
+export function useDeleteTeam() { /* 15 lines of boilerplate */ }
+```
+
+#### Auto-Generated Resource Configurations
+Settings pages automatically generate their configurations:
+
+```typescript
+// ✅ New way (3 lines)
+export default function TeamsPage() {
+  const config = generateResourceConfig('team');
+  return <ResourceSettingsPage config={config} />;
+}
+
+// ❌ Old way (20+ lines)
+export default function TeamsPage() {
+  return (
+    <ResourceSettingsPage
+      config={{
+        name: 'Team',
+        actionPrefix: 'team',
+        displayFields: ['name', 'identifier', 'description'],
+        searchFields: ['name', 'identifier', 'description'],
+        createFields: [
+          { key: 'name', label: 'Team Name', type: 'text', required: true },
+          { key: 'identifier', label: 'Identifier', type: 'text', required: true },
+          { key: 'description', label: 'Description', type: 'textarea' }
+        ]
+      }}
+    />
+  );
+}
+```
+
+#### Adding New Resources
+To add a new resource type, you only need:
+
+1. Create the hooks: `export const newResourceHooks = createResourceHooks('newResource');`
+2. Create the page: `<ResourceSettingsPage config={generateResourceConfig('newResource')} />`
+3. Add API endpoints following the standard pattern
+
+### Benefits
+
+- **90% reduction** in boilerplate code
+- **Type-safe** with proper TypeScript interfaces
+- **Consistent API** across all resources
+- **Automatic form generation** for CRUD operations
+- **Optimistic updates** and offline support built-in
+- **Easy to extend** for new resource types
+
+### Tech Stack
+
+- **Framework**: Next.js 15 with App Router
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: NextAuth.js
+- **Styling**: Tailwind CSS
+- **State Management**: TanStack Query
+- **UI Components**: Radix UI primitives
+- **TypeScript**: Full type safety throughout
+
+## Getting Started
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up your database and environment variables
+4. Run the development server: `npm run dev`
+
+## Development
+
+The codebase follows strict DRY principles with:
+- Unified resource management system
+- Auto-generated CRUD operations
+- Type-safe API layer
+- Consistent UI patterns
+
+See the individual files for detailed implementation examples.

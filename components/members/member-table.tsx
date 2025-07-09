@@ -1,4 +1,4 @@
-// Member Management Table - Linear Clone
+// Member Management Table - 
 "use client";
 
 import React, { useState } from 'react';

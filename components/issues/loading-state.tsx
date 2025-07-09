@@ -1,4 +1,4 @@
-// Loading State Component - Linear Clone
+// Loading State Component - 
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function LoadingState() {

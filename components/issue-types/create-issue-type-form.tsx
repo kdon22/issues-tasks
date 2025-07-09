@@ -12,7 +12,6 @@ interface IssueType {
   name: string;
   description?: string;
   icon?: string;
-  color: string;
   isDefault: boolean;
 }
 
@@ -33,38 +32,20 @@ const ISSUE_TYPE_ICONS = [
   { key: 'subtask', icon: CheckCircle, label: 'Subtask' },
 ];
 
-const ISSUE_TYPE_COLORS = [
-  '#EF4444', // Red
-  '#F97316', // Orange
-  '#F59E0B', // Amber
-  '#EAB308', // Yellow
-  '#84CC16', // Lime
-  '#22C55E', // Green
-  '#10B981', // Emerald
-  '#06B6D4', // Cyan
-  '#3B82F6', // Blue
-  '#6366F1', // Indigo
-  '#8B5CF6', // Violet
-  '#A855F7', // Purple
-  '#EC4899', // Pink
-  '#F43F5E', // Rose
-  '#6B7280', // Gray
-  '#374151', // Dark Gray
-];
+
 
 export function CreateIssueTypeForm({ issueType, onCreateIssueType, onCancel }: CreateIssueTypeFormProps) {
   const [formData, setFormData] = useState({
     name: issueType?.name || '',
     description: issueType?.description || '',
     icon: issueType?.icon || 'bug',
-    color: issueType?.color || ISSUE_TYPE_COLORS[0],
     isDefault: issueType?.isDefault || false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.color) return;
+    if (!formData.name) return;
 
     setIsSubmitting(true);
     try {
@@ -83,11 +64,8 @@ export function CreateIssueTypeForm({ issueType, onCreateIssueType, onCancel }: 
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Preview */}
       <div className="flex items-center gap-3 p-4 border rounded-lg bg-muted/20">
-        <div 
-          className="w-10 h-10 rounded-md flex items-center justify-center" 
-          style={{ backgroundColor: formData.color }}
-        >
-          <IconComponent className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-md flex items-center justify-center bg-gray-200">
+          <IconComponent className="w-5 h-5 text-gray-600" />
         </div>
         <div>
           <div className="font-medium">{formData.name || 'Issue Type Name'}</div>
@@ -144,21 +122,7 @@ export function CreateIssueTypeForm({ issueType, onCreateIssueType, onCancel }: 
         </div>
       </div>
 
-      {/* Color Selection */}
-      <div className="space-y-3">
-        <label className="text-sm font-medium">Color</label>
-        <div className="flex flex-wrap gap-2">
-          {ISSUE_TYPE_COLORS.map((color) => (
-            <button
-              key={color}
-              type="button"
-              className={`w-8 h-8 rounded-full border-2 ${formData.color === color ? 'border-gray-400 ring-2 ring-primary ring-offset-2' : 'border-transparent'}`}
-              style={{ backgroundColor: color }}
-              onClick={() => setFormData(prev => ({ ...prev, color }))}
-            />
-          ))}
-        </div>
-      </div>
+
 
       {/* Default */}
       <div className="flex items-center justify-between p-3 border rounded-lg">

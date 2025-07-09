@@ -1,5 +1,4 @@
-// Hooks - Linear Clone (DRY Resource Hooks)
-export * from './use-resource';
+// Hooks - Ultra-Fast Action-Based System with IndexedDB
 export * from './use-auto-save';
 export * from './use-editable-auto-save';
 export * from './use-keyboard-shortcuts';
@@ -7,34 +6,46 @@ export * from './use-permissions';
 export * from './use-current-workspace';
 export * from './use-rich-text-auto-save';
 
-// Import useResource for direct use
-import { useResource } from './use-resource';
+// Export the new EXTREMELY DRY action-based hooks
+export {
+  // Core hooks that actually exist
+  useActionClient,
+  useActionMutation,
+  useActionQuery,
+  useOfflineStatus,
+  
+  // Resource factory and instances
+  createResourceHooks,
+  resourceHooks,
+  
+  // Individual resource hook instances (for convenience)
+  teamHooks,
+  projectHooks,
+  labelHooks,
+  memberHooks,
+  issueTypeHooks,
+  stateHooks,
+  statusFlowHooks,
+  fieldSetHooks,
+  issueHooks,
+  commentHooks,
+  reactionHooks,
+  
+  // Utility for creating new resource hooks
+  createNewResourceHooks
+} from './use-action-api';
 
-// Simple resource configs for client-side data fetching
-const resourceConfigs = {
-  issues: { endpoint: '/api/issues' },
-  projects: { endpoint: '/api/projects' },
-  teams: { endpoint: '/api/teams' },
-  workspaces: { endpoint: '/api/workspace' },
-  states: { endpoint: '/api/states' },
-  labels: { endpoint: '/api/labels' },
-  customFields: { endpoint: '/api/custom-fields' },
-  fieldConfigurations: { endpoint: '/api/field-configurations' },
-  issueTypes: { endpoint: '/api/issue-types' },
-};
-
-// Convenience hooks for specific resources
-export const useIssues = () => useResource(resourceConfigs.issues);
-export const useProjects = () => useResource(resourceConfigs.projects);
-export const useTeams = () => useResource(resourceConfigs.teams);
-export const useWorkspaces = () => useResource(resourceConfigs.workspaces);
-export const useStates = () => useResource(resourceConfigs.states);
-export const useLabels = () => useResource(resourceConfigs.labels);
-export const useCustomFields = () => useResource(resourceConfigs.customFields);
-export const useFieldConfigurations = () => useResource(resourceConfigs.fieldConfigurations);
-export const useIssueTypes = () => useResource(resourceConfigs.issueTypes);
-
-// CRUD hooks for issues
-export const useCreateIssue = () => useResource(resourceConfigs.issues).create;
-export const useUpdateIssue = () => useResource(resourceConfigs.issues).update;
-export const useDeleteIssue = () => useResource(resourceConfigs.issues).delete; 
+// 🚀 USAGE EXAMPLES:
+//
+// // Use individual resource hooks:
+// const { data: teams } = teamHooks.useList();
+// const createTeam = teamHooks.useCreate();
+// const updateTeam = teamHooks.useUpdate();
+// const deleteTeam = teamHooks.useDelete();
+//
+// // Or use the generic factory:
+// const customHooks = createResourceHooks<CustomResource>('custom');
+// const { data: customItems } = customHooks.useList();
+//
+// // Or use the convenience method:
+// const newHooks = createNewResourceHooks<NewResource>('newResource'); 

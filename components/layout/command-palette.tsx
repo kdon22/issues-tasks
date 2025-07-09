@@ -1,4 +1,4 @@
-// Command Palette Component - Linear Clone
+// Command Palette Component - 
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -44,7 +44,7 @@ export function CommandPalette({ open, onOpenChange, onNewIssue }: CommandPalett
   // Build workspace-aware URLs
   const getWorkspaceUrl = (path: string) => {
     if (workspaceUrl) {
-      return `/workspace/${workspaceUrl}${path}`;
+      return `/workspaces/${workspaceUrl}${path}`;
     }
     return path; // Fallback to old URLs if no workspace context
   };

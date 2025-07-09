@@ -1,4 +1,4 @@
-// Query Client - Linear Clone (Optimized for Performance)
+// Query Client -  (Optimized for Performance)
 import { QueryClient } from '@tanstack/react-query';
 
 export const queryClient = new QueryClient({
@@ -67,13 +67,14 @@ export const queryKeys = {
     list: (filters: Record<string, any>) => [...queryKeys.labels.lists(), filters] as const,
   },
   
-  // Custom Fields
-  customFields: {
-    all: ['custom-fields'] as const,
-    lists: () => [...queryKeys.customFields.all, 'list'] as const,
-    list: (filters: Record<string, any>) => [...queryKeys.customFields.lists(), filters] as const,
-    details: () => [...queryKeys.customFields.all, 'detail'] as const,
-    detail: (id: string) => [...queryKeys.customFields.details(), id] as const,
+  // Field Sets
+  fieldSets: {
+    all: ['field-sets'] as const,
+    lists: () => [...queryKeys.fieldSets.all, 'list'] as const,
+    list: (filters: Record<string, any>) => [...queryKeys.fieldSets.lists(), filters] as const,
+    details: () => [...queryKeys.fieldSets.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.fieldSets.details(), id] as const,
+    configurations: (fieldSetId: string) => [...queryKeys.fieldSets.detail(fieldSetId), 'configurations'] as const,
   },
   
   // Field Configurations
@@ -93,6 +94,6 @@ export const invalidateQueries = {
   teams: () => queryClient.invalidateQueries({ queryKey: queryKeys.teams.all }),
   states: () => queryClient.invalidateQueries({ queryKey: queryKeys.states.all }),
   labels: () => queryClient.invalidateQueries({ queryKey: queryKeys.labels.all }),
-  customFields: () => queryClient.invalidateQueries({ queryKey: queryKeys.customFields.all }),
+  fieldSets: () => queryClient.invalidateQueries({ queryKey: queryKeys.fieldSets.all }),
   fieldConfigurations: () => queryClient.invalidateQueries({ queryKey: queryKeys.fieldConfigurations.all }),
 }; 

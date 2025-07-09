@@ -1,4 +1,4 @@
-// App Shell Layout Component - Linear Clone
+// App Shell Layout Component - 
 import { cn } from '@/lib/utils';
 import { AppHeader } from './app-header';
 
@@ -26,9 +26,7 @@ export function AppShell({
       )}
       <main className="flex-1 overflow-hidden flex flex-col">
         {header || (
-          <AppHeader 
-            showWorkspaceSwitcher={showWorkspaceSwitcher}
-          />
+          <AppHeader />
         )}
         <div className="flex-1 overflow-y-auto">
           {children}

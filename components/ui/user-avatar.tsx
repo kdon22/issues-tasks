@@ -1,4 +1,4 @@
-// User Avatar Component - Linear Clone
+// User Avatar Component - 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatInitials } from '@/lib/formatters';

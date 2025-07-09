@@ -31,6 +31,8 @@ export function SettingsPageLayout({
   maxWidth = '4xl',
   usePageLayout = true 
 }: SettingsPageLayoutProps) {
+  console.log('🔵 SettingsPageLayout rendering with actions:', actions);
+  
   const maxWidthClasses = {
     sm: 'max-w-sm',
     md: 'max-w-md', 
@@ -60,7 +62,10 @@ export function SettingsPageLayout({
                     key={index}
                     variant={action.variant || 'outline'}
                     size="sm"
-                    onClick={action.onClick}
+                    onClick={() => {
+                      console.log('🔵 Action button clicked:', action.label);
+                      action.onClick();
+                    }}
                     className={
                       action.className || 
                       (action.variant === 'default' ? '' : 'text-slate-700 border-slate-300 hover:bg-slate-50')

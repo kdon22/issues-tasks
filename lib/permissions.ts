@@ -1,4 +1,4 @@
-// Multi-Level Permission System - Linear Clone
+// Multi-Level Permission System - 
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 

@@ -1,4 +1,4 @@
-// Authentication Utilities - Linear Clone
+// Authentication Utilities - 
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -39,9 +39,14 @@ export async function getUserLastAccessedWorkspace(userId: string): Promise<stri
       where: {
         userId: userId,
       },
-      orderBy: {
-        lastAccessedAt: 'desc',
-      },
+      orderBy: [
+        {
+          lastAccessedAt: 'desc',
+        },
+        {
+          createdAt: 'desc', // Fallback to creation date if lastAccessedAt is null
+        },
+      ],
       include: {
         workspace: {
           select: {
