@@ -1,4 +1,4 @@
-// Query Client -  (Optimized for Performance)
+// Query Client - Fixed for Ultra-Fast Navigation (Like Linear)
 import { QueryClient } from '@tanstack/react-query';
 
 export const queryClient = new QueryClient({
@@ -14,12 +14,18 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       // Don't refetch on reconnect to avoid spam
       refetchOnReconnect: false,
-      // Enable background refetching for fresh data
-      refetchOnMount: 'always',
+      // 🚀 FIXED: Serve cached data immediately for instant navigation
+      refetchOnMount: false,
+      // Enable background refetching for fresh data (but don't block UI)
+      refetchInterval: false, // We'll handle this manually when needed
+      // Network mode for offline support
+      networkMode: 'offlineFirst',
     },
     mutations: {
       // Retry failed mutations once
       retry: 1,
+      // Network mode for offline support
+      networkMode: 'offlineFirst',
     },
   },
 });

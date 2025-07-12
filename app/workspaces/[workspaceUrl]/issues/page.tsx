@@ -1,104 +1,77 @@
-// Workspace Issues Page - Linear Clone
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useParams, notFound } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { useCurrentWorkspace } from '@/lib/hooks/use-current-workspace';
+import { resourceHooks } from '@/lib/hooks';
+import { IssuesPageContent } from '@/components/issues/issues-page-content';
 import { AppShell } from '@/components/layout/app-shell';
 import { Sidebar } from '@/components/layout/sidebar';
-import { PageLayout } from '@/components/layout/page-layout';
-import { Button } from '@/components/ui/button';
-import { IssuesPageContent } from '@/components/issues/issues-page-content';
+import { AppHeader } from '@/components/layout/app-header';
+import { LoadingState } from '@/components/issues/loading-state';
+import { useCacheSystem } from '@/components/providers/cache-provider';
 
 interface WorkspaceIssuesPageProps {
-  params: Promise<{
-    workspaceUrl: string;
-  }>;
+  params: Promise<{ workspaceUrl: string }>;
 }
 
-export default async function WorkspaceIssuesPage({ params }: WorkspaceIssuesPageProps) {
-  const session = await auth();
-  
+export default function WorkspaceIssuesPage() {
+  const params = useParams();
+  const { workspaceUrl } = params;
+  const { data: session } = useSession();
+  const { workspace, isLoading: workspaceLoading } = useCurrentWorkspace();
+  const { isInitialized: cacheInitialized } = useCacheSystem();
+
+  // Use cached resource hooks for instant data access
+  const { data: teams = [], isLoading: teamsLoading } = resourceHooks.team.useList();
+  const { data: projects = [], isLoading: projectsLoading } = resourceHooks.project.useList();
+  const { data: issueTypes = [], isLoading: issueTypesLoading } = resourceHooks.issueType.useList();
+  const { data: members = [], isLoading: membersLoading } = resourceHooks.member.useList();
+
+  // Check authentication
   if (!session?.user?.id) {
-    redirect('/auth/signin');
+    window.location.href = '/auth/signin';
+    return null;
   }
 
-  const { workspaceUrl } = await params;
-
-  // Check if workspace exists and user has access
-  const workspace = await prisma.workspace.findUnique({
-    where: { url: workspaceUrl },
-    include: {
-      members: {
-        where: { userId: session.user.id },
-        take: 1,
-      },
-    },
-  });
-
-  if (!workspace) {
-    redirect('/workspaces/create');
+  // Check workspace access
+  if (!workspaceLoading && !workspace) {
+    notFound();
   }
 
-  if (workspace.members.length === 0) {
-    redirect('/workspaces/create');
+  // Show loading while cache is initializing
+  if (!cacheInitialized || workspaceLoading || !workspace) {
+    return (
+      <AppShell 
+        sidebar={<Sidebar />}
+        header={<AppHeader />}
+      >
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading workspace...</p>
+          </div>
+        </div>
+      </AppShell>
+    );
   }
-
-  // Fetch workspace data needed for filters
-  const [teams, projects, issueTypes, members] = await Promise.all([
-    prisma.team.findMany({
-      where: { workspaceId: workspace.id },
-      select: { id: true, name: true, identifier: true },
-      orderBy: { name: 'asc' },
-    }),
-    prisma.project.findMany({
-      where: { workspaceId: workspace.id },
-      select: { id: true, name: true, identifier: true, color: true },
-      orderBy: { name: 'asc' },
-    }),
-    prisma.issueType.findMany({
-      where: { workspaceId: workspace.id },
-      select: { id: true, name: true, icon: true },
-      orderBy: { name: 'asc' },
-    }),
-    prisma.workspaceMember.findMany({
-      where: { workspaceId: workspace.id },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true },
-        },
-      },
-      orderBy: { user: { name: 'asc' } },
-    }),
-  ]);
 
   return (
-    <AppShell sidebar={<Sidebar />}>
-      <PageLayout 
-        title="Issues"
-        actions={
-          <Button>
-            Create Issue
-          </Button>
-        }
-      >
-        <IssuesPageContent 
-          workspaceUrl={workspaceUrl}
-          workspaceId={workspace.id}
-          teams={teams}
-          projects={projects.map(p => ({
-            ...p,
-            color: p.color || undefined,
-          }))}
-          issueTypes={issueTypes.map(it => ({
-            ...it,
-            icon: it.icon || undefined,
-          }))}
-          members={members.map(m => ({
-            id: m.user.id,
-            name: m.user.name || m.user.email,
-            email: m.user.email,
-          }))}
-        />
-      </PageLayout>
+    <AppShell 
+      sidebar={<Sidebar />}
+      header={<AppHeader />}
+    >
+      <IssuesPageContent
+        workspaceUrl={workspace.url}
+        workspaceId={workspace.id}
+        teams={teams}
+        projects={projects.map(p => ({
+          ...p,
+          identifier: p.identifier || p.name.toLowerCase().replace(/\s+/g, '-'),
+        }))}
+        issueTypes={issueTypes}
+        members={members}
+      />
     </AppShell>
   );
 } 

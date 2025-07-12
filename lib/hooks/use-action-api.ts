@@ -333,7 +333,7 @@ export function useActionMutation<T = any>(
   });
 }
 
-// Query hook with offline support
+// Query hook with offline support and cache-first strategy
 export function useActionQuery<T = any>(
   action: string,
   options?: {
@@ -352,6 +352,31 @@ export function useActionQuery<T = any>(
     queryFn: async (): Promise<T> => {
       if (!client) throw new Error('No action client available');
       
+      // Try to get data from IndexedDB cache first
+      const resourceType = action.split('.')[0];
+      const operation = action.split('.')[1];
+      
+      if (operation === 'list' && resourceType) {
+        // For list operations, try cache first
+        const cachedData = await client.getCachedData<T>(resourceType);
+        if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
+          console.log(`📋 Serving ${resourceType} from cache (${cachedData.length} items)`);
+          return cachedData as T;
+        }
+      }
+      
+      if (operation === 'get' && options?.resourceId) {
+        // For get operations, try cache first
+        const cachedData = await client.getCachedData<T>(resourceType, { id: options.resourceId });
+        if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
+          console.log(`📋 Serving ${resourceType}/${options.resourceId} from cache`);
+          return cachedData[0] as T;
+        }
+      }
+      
+      console.log(`🌐 Fetching ${action} from server (not in cache)`);
+      
+      // Fallback to server if not in cache
       const actionRequest: any = { action };
       if (options?.resourceId) {
         actionRequest.resourceId = options.resourceId;
@@ -364,9 +389,13 @@ export function useActionQuery<T = any>(
       return response.data!;
     },
     enabled: !!client && (options?.enabled !== false),
-    staleTime: options?.staleTime ?? 5 * 60 * 1000, // 5 minutes
-    gcTime: options?.gcTime ?? 10 * 60 * 1000, // 10 minutes
-    retry: options?.retry ?? 2
+    staleTime: options?.staleTime ?? 30 * 60 * 1000, // 30 minutes - longer for cache-first
+    gcTime: options?.gcTime ?? 60 * 60 * 1000, // 1 hour - longer for cache-first
+    retry: options?.retry ?? 1, // Less retries since we have cache fallback
+    // Cache-first strategy: Don't refetch on mount, serve cached data immediately
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 

@@ -68,6 +68,22 @@ const RESOURCE_TYPE_MAP = {
   'reaction': 'Reaction'
 } as const;
 
+// Static resources configuration to avoid circular dependencies
+const STATIC_RESOURCES = [
+  { actionPrefix: 'team', name: { singular: 'Team', plural: 'Teams' } },
+  { actionPrefix: 'project', name: { singular: 'Project', plural: 'Projects' } },
+  { actionPrefix: 'label', name: { singular: 'Label', plural: 'Labels' } },
+  { actionPrefix: 'labelGroup', name: { singular: 'Label Group', plural: 'Label Groups' } },
+  { actionPrefix: 'member', name: { singular: 'Member', plural: 'Members' } },
+  { actionPrefix: 'issueType', name: { singular: 'Issue Type', plural: 'Issue Types' } },
+  { actionPrefix: 'state', name: { singular: 'State', plural: 'States' } },
+  { actionPrefix: 'statusFlow', name: { singular: 'Status Flow', plural: 'Status Flows' } },
+  { actionPrefix: 'fieldSet', name: { singular: 'Field Set', plural: 'Field Sets' } },
+  { actionPrefix: 'issue', name: { singular: 'Issue', plural: 'Issues' } },
+  { actionPrefix: 'comment', name: { singular: 'Comment', plural: 'Comments' } },
+  { actionPrefix: 'reaction', name: { singular: 'Reaction', plural: 'Reactions' } }
+];
+
 // Use static resources to avoid circular dependencies
 const AVAILABLE_RESOURCES = STATIC_RESOURCES.map(resource => ({
   actionPrefix: resource.actionPrefix,

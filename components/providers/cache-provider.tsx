@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useCurrentWorkspace } from '@/lib/hooks/use-current-workspace';
+import { createActionClient } from '@/lib/api/action-client';
 
 interface CacheContextType {
   isInitialized: boolean;
@@ -48,35 +49,74 @@ export function CacheProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  // 🚀 Enhanced Cache Initialization with Workspace Bootstrap
   useEffect(() => {
-    // Reset cache system if we shouldn't initialize
-    if (!shouldInitializeCache()) {
-      setCacheSystem({
-        isInitialized: false,
-        error: null
-      });
-      return;
-    }
+    if (!shouldInitializeCache()) return;
 
-    // Simple initialization for action-based system
-    const initCache = async () => {
+    let isActive = true;
+    
+    const initializeCache = async () => {
+      if (!workspace?.url) {
+        console.warn('⚠️ No workspace URL available for cache initialization');
+        return;
+      }
+      
+      console.log('🚀 Initializing cache system for workspace:', workspace.url);
+      
       try {
-        setCacheSystem({
-          isInitialized: true,
-          error: null
-        });
+        setCacheSystem(prev => ({ ...prev, isInitialized: false, error: null }));
         
-      } catch (error) {
-        console.error('❌ Failed to initialize action system:', error);
-        setCacheSystem({
-          isInitialized: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
+        // Create action client for this workspace
+        const actionClient = createActionClient(workspace.url);
+        
+        // Check if we have recent bootstrap data
+        const hasRecentData = await actionClient.hasRecentBootstrap(5 * 60 * 1000); // 5 minutes
+        
+        if (!hasRecentData) {
+          console.log('🔄 No recent bootstrap data found, bootstrapping workspace...');
+          const startTime = Date.now();
+          
+          // Bootstrap the entire workspace
+          const bootstrapResult = await actionClient.bootstrapWorkspace();
+          
+          if (bootstrapResult.success) {
+            const bootstrapTime = Date.now() - startTime;
+            console.log(`✅ Workspace bootstrap completed in ${bootstrapTime}ms`);
+            console.log(`📊 Bootstrap data:`, bootstrapResult.data);
+          } else {
+            console.warn('⚠️ Bootstrap failed:', bootstrapResult.error);
+          }
+        } else {
+          console.log('✅ Recent bootstrap data found, using cached data');
+        }
+        
+        // Mark cache as initialized
+        if (isActive) {
+          setCacheSystem({
+            isInitialized: true,
+            error: null
+          });
+          
+          console.log('🎯 Cache system initialized and ready for instant navigation');
+        }
+        
+      } catch (error: any) {
+        console.error('💥 Cache initialization failed:', error);
+        if (isActive) {
+          setCacheSystem({
+            isInitialized: false,
+            error: error.message || 'Failed to initialize cache'
+          });
+        }
       }
     };
 
-    initCache();
-  }, [session, workspace?.url, pathname, isClient, status]);
+    initializeCache();
+    
+    return () => {
+      isActive = false;
+    };
+  }, [workspace?.url, session?.user?.id, pathname, status]);
 
   return (
     <CacheContext.Provider value={cacheSystem}>
