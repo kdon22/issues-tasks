@@ -61,8 +61,6 @@ export function CacheProvider({ children }: { children: ReactNode }) {
     // Simple initialization for action-based system
     const initCache = async () => {
       try {
-        console.log('✅ Action-based system ready for workspace:', workspace?.url);
-        
         setCacheSystem({
           isInitialized: true,
           error: null

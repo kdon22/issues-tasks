@@ -87,7 +87,7 @@ export function useUserWorkspaces(instanceId?: string) {
       const params = new URLSearchParams();
       if (instanceId) params.append('instanceId', instanceId);
 
-      const response = await fetch(`/api/workspaces?${params}`);
+      const response = await fetch(`/api/permissions?${params}`);
       if (!response.ok) {
         throw new Error('Failed to fetch workspaces');
       }

@@ -1,0 +1,233 @@
+---
+globs: features/**/*.schema.ts,features/**/schema.ts
+description: Schema refactoring guide for Single Source of Truth (SSOT) pattern
+---
+
+# Schema Refactoring Guide: Single Source of Truth (SSOT)
+
+## Overview
+Each feature should have ONE schema file that serves as the complete Single Source of Truth. This schema works with the existing factory system documented in [CRUD System.md](mdc:docs/CRUD System.md).
+
+## SSOT Schema Structure
+
+### ✅ KEEP in SSOT (Resource-Specific Configuration)
+
+```typescript
+// 1. Resource Identity & Configuration
+export const RESOURCE_SCHEMA = {
+  key: 'teams',                    // IndexedDB table name
+  endpoint: 'teams',               // API endpoint
+  actionPrefix: 'team',            // Used by DatabaseFactory
+  name: { singular: 'Team', plural: 'Teams' }
+};
+
+// 2. Database Schema Definition
+export const RESOURCE_DATABASE_SCHEMA = {
+  model: 'Team',
+  fields: {
+    name: { type: 'String' },
+    identifier: { type: 'String', unique: true },
+    // ... unique fields per resource
+  },
+  relations: {
+    workspace: { type: 'belongsTo', model: 'Workspace' },
+    members: { type: 'hasMany', model: 'WorkspaceMember' }
+  }
+};
+
+// 3. Field Definitions (UI Configuration)
+fields: [
+  {
+    key: 'name',
+    label: 'Name', 
+    type: 'text',
+    required: true,
+    validation: [
+      { type: 'required', message: 'Name is required' },
+      { type: 'minLength', value: 2, message: 'Too short' }
+    ]
+  },
+  // ... resource-specific fields
+]
+
+// 4. Validation Schema
+export const ResourceValidationSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  // ... resource-specific validation
+});
+
+// 5. Custom Business Logic
+export const RESOURCE_BUSINESS_LOGIC = {
+  beforeCreate: (data) => { /* custom logic */ },
+  afterUpdate: (data) => { /* custom logic */ }
+};
+```
+
+### ❌ REMOVE from SSOT (Factory-Generated)
+
+```typescript
+// DON'T include these - let factories generate them:
+
+// ❌ API Handlers - DatabaseFactory already generates these
+export const TEAM_HANDLERS = {
+  async list(context) { ... },
+  async create(context, data) { ... }
+};
+
+// ❌ Query Keys - Should be factory-generated from actionPrefix
+export const TEAM_QUERY_CONFIG = {
+  queryKeys: {
+    all: ['teams'],
+    lists: () => ['teams', 'list']
+  }
+};
+
+// ❌ IndexedDB Schema - Should be derived from key + fields
+export const TEAM_OFFLINE_SCHEMA = {
+  tableName: 'teams',
+  keyPath: 'id'
+};
+
+// ❌ React Hooks - Should be factory-generated from actionPrefix
+export const TEAM_HOOKS = {
+  useTeams: () => ({ queryKey: ['teams', 'list'] }),
+  useCreateTeam: () => ({ mutationKey: ['teams', 'create'] })
+};
+
+// ❌ Data Transformers - Should be factory-generated from fields
+export const TEAM_TRANSFORMERS = {
+  toClient: (data) => ({ ...data }),
+  toServer: (data) => ({ ...data })
+};
+
+// ❌ Legacy Config Objects - Violates SSOT principle
+export const teamConfig = {
+  name: 'Team',
+  actionPrefix: 'team',
+  // ... duplicate configuration
+};
+```
+
+## Factory System Integration
+
+The existing factory system ([CRUD System.md](mdc:docs/CRUD System.md)) will auto-generate:
+
+- **API Handlers** - DatabaseFactory creates from `actionPrefix`
+- **Frontend Methods** - ActionClient creates from `actionPrefix`  
+- **Query Keys** - Generated from `actionPrefix` pattern
+- **IndexedDB Schemas** - Generated from `key` + `fields`
+- **React Hooks** - Generated from `actionPrefix`
+- **Data Transformers** - Generated from `fields` types
+
+## Comprehensive SSOT Pattern
+
+```typescript
+// features/teams/teams.schema.ts
+import { z } from 'zod';
+
+// 1. Validation Schema
+export const TeamValidationSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  identifier: z.string().min(1, 'Identifier is required'),
+  description: z.string().optional(),
+  icon: z.string().optional(),
+  timezone: z.string().optional(),
+  isPrivate: z.boolean().optional()
+});
+
+// 2. Database Schema
+export const TEAM_DATABASE_SCHEMA = {
+  model: 'Team',
+  fields: {
+    id: { type: 'String', id: true, default: 'cuid()' },
+    name: { type: 'String' },
+    identifier: { type: 'String', unique: true },
+    description: { type: 'String', optional: true },
+    icon: { type: 'String', optional: true },
+    timezone: { type: 'String', optional: true },
+    isPrivate: { type: 'Boolean', default: false },
+    workspaceId: { type: 'String' }
+  },
+  relations: {
+    workspace: { type: 'belongsTo', model: 'Workspace', foreignKey: 'workspaceId' },
+    members: { type: 'hasMany', model: 'WorkspaceMember', foreignKey: 'teamId' },
+    projects: { type: 'hasMany', model: 'Project', through: 'ProjectTeam' }
+  }
+};
+
+// 3. Complete Resource Schema (SSOT)
+export const TEAM_SCHEMA = {
+  // Factory integration
+  key: 'teams',
+  endpoint: 'teams',
+  actionPrefix: 'team',
+  name: { singular: 'Team', plural: 'Teams' },
+  
+  // UI Configuration
+  display: {
+    title: 'Teams',
+    description: 'Manage teams to organize workspace members',
+    icon: 'Users'
+  },
+  
+  // Field definitions
+  fields: [
+    {
+      key: 'name',
+      label: 'Name',
+      type: 'text',
+      required: true,
+      validation: [
+        { type: 'required', message: 'Name is required' },
+        { type: 'minLength', value: 2, message: 'Too short' }
+      ]
+    },
+    // ... other fields
+  ],
+  
+  // Permissions
+  permissions: {
+    create: 'workspace.admin',
+    update: 'team.member',
+    delete: 'workspace.admin'
+  },
+  
+  // Business Logic
+  businessLogic: {
+    beforeCreate: (data) => {
+      // Custom validation or transformations
+      return data;
+    },
+    afterUpdate: (data) => {
+      // Custom post-update logic
+      return data;
+    }
+  }
+};
+
+// 4. Export SSOT
+export default TEAM_SCHEMA;
+```
+
+## Migration Steps
+
+1. **Remove Legacy Config Objects** - Delete `teamConfig`, `projectConfig`, etc.
+2. **Add Database Schema** - Define complete database structure
+3. **Add Business Logic** - Include custom operations
+4. **Add Relations** - Define how resources relate
+5. **Consolidate Validation** - Single validation schema
+6. **Export SSOT** - Single default export
+
+## Benefits
+
+- **🎯 Single Source of Truth** - Everything about a resource in one file
+- **🔄 Factory Compatible** - Works with existing CRUD system
+- **📈 Maintainable** - No duplication across files
+- **🛡️ Type Safe** - Full TypeScript support
+- **🚀 Scalable** - Easy to add new resources
+
+## File Naming Convention
+
+- `features/teams/teams.schema.ts` - Core resources
+- `features/admin/labels/labels.schema.ts` - Admin resources  
+- Always use `.schema.ts` extension for SSOT files

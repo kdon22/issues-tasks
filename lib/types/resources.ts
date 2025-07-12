@@ -16,6 +16,7 @@ export interface Team extends BaseResource {
   timezone?: string;
   isPrivate?: boolean;
   icon?: string; // Combined "iconName:color" format
+  workspaceId: string;
   settings?: any;
 }
 
@@ -24,14 +25,17 @@ export interface Project extends BaseResource {
   description?: string;
   icon?: string;
   color?: string;
+  status: string;
   statusFlowId?: string;
   fieldSetId?: string;
+  workspaceId: string;
 }
 
 // Label resource
 export interface Label extends BaseResource {
   description?: string;
-  color?: string;
+  color: string;
+  workspaceId: string;
 }
 
 // Member resource
@@ -53,54 +57,76 @@ export interface IssueType extends BaseResource {
   statusFlowId?: string;
   fieldSetId?: string;
   isDefault?: boolean;
+  workspaceId: string;
 }
 
 // State resource
 export interface State extends BaseResource {
   description?: string;
   icon?: string;
-  color?: string;
+  color: string;
   type: string;
+  position: number;
+  statusFlowId: string;
 }
 
 // Issue resource
 export interface Issue extends BaseResource {
   title: string;
   description?: string;
-  status: string;
+  identifier: string;
+  status?: string;
   priority: string;
   assigneeId?: string;
+  workspaceId: string;
   // name property comes from BaseResource (can be same as title)
 }
 
-// Comment resource (from existing code)
+// Comment resource (comprehensive version with relations)
 export interface Comment {
   id: string;
   content: string;
-  authorId: string;
   issueId: string;
+  userId: string;
   createdAt: string;
   updatedAt: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+  reactions: Reaction[];
+  replies?: Comment[];
 }
 
-// Reaction resource (from existing code)
+// Reaction resource (comprehensive version with aggregated data)
 export interface Reaction {
   id: string;
   emoji: string;
-  userId: string;
-  commentId: string;
-  createdAt: string;
+  count: number;
+  users: {
+    id: string;
+    name: string | null;
+    email: string;
+  }[];
+  hasReacted: boolean;
 }
 
 // Supporting resource types
 export interface StatusFlow extends BaseResource {
   description?: string;
-  isDefault?: boolean;
+  color: string;
+  icon?: string;
+  position: number;
+  isDefault: boolean;
+  workspaceId: string;
 }
 
 export interface FieldSet extends BaseResource {
   description?: string;
-  fields: any[]; // TODO: Define proper field structure
+  workspaceId: string;
+  isDefault: boolean;
+  fields?: any[]; // TODO: Define proper field structure
 }
 
 // Union type for all resources

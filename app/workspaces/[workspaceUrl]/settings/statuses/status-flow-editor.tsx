@@ -190,8 +190,12 @@ export function StatusFlowEditor({ flow, workspaceUrl, onBack, onUpdate }: Statu
     })
   );
 
+  // Detect if this is a new flow (id is 'new' placeholder)
+  const isNewFlow = flow.id === 'new';
+
   // Use standardized resource hooks with optimistic updates enabled
   const { data: statusFlowData, isLoading: loading, error } = resourceHooks.statusFlow.useGet(flow.id);
+  const statusFlowCreate = resourceHooks.statusFlow.useCreate();
   const statusFlowUpdate = resourceHooks.statusFlow.useUpdate();
   const stateCreate = resourceHooks.state.useCreate();
   const stateUpdate = resourceHooks.state.useUpdate();
@@ -205,14 +209,24 @@ export function StatusFlowEditor({ flow, workspaceUrl, onBack, onUpdate }: Statu
   // Helper functions using standardized hooks
   const handleUpdateFlowInfo = async () => {
     try {
-      await statusFlowUpdate.update(flow.id, { name: flowName, description: flowDescription });
-      toast.success('Status flow updated successfully');
-      setEditingFlowInfo(false);
-      onUpdate();
+      if (isNewFlow) {
+        // For new flows, create the flow and keep editor open for adding statuses
+        await statusFlowCreate.create({ name: flowName, description: flowDescription });
+        toast.success('Status flow created successfully');
+        setEditingFlowInfo(false);
+        // Don't call onUpdate() - keep editor open so user can add statuses
+      } else {
+        // For existing flows, just update and keep editor open
+        await statusFlowUpdate.update(flow.id, { name: flowName, description: flowDescription });
+        toast.success('Status flow updated successfully');
+        setEditingFlowInfo(false);
+      }
     } catch (error: any) {
-      toast.error(`Failed to update status flow: ${error.message}`);
+      toast.error(`Failed to ${isNewFlow ? 'create' : 'update'} status flow: ${error.message}`);
     }
   };
+
+
 
   const handleCreateStatus = async (statusData: { name: string; description: string; color: string; type: State['type'] }) => {
     try {
@@ -382,18 +396,12 @@ export function StatusFlowEditor({ flow, workspaceUrl, onBack, onUpdate }: Statu
         )
       )}
 
-      {/* Header with Add Button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Workflow Statuses</h2>
-          <p className="text-sm text-muted-foreground">
-            Configure the statuses in this workflow
-          </p>
-        </div>
-        <Button onClick={() => handleStartCreating('BACKLOG')} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add status
-        </Button>
+      {/* Header */}
+      <div>
+        <h2 className="text-lg font-semibold">Workflow Statuses</h2>
+        <p className="text-sm text-muted-foreground">
+          Configure the statuses in this workflow
+        </p>
       </div>
 
       {/* Search */}

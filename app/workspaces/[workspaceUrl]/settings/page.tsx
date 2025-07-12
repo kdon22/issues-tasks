@@ -2,11 +2,12 @@
 import { redirect } from 'next/navigation';
 
 interface Props {
-  params: {
+  params: Promise<{
     workspaceUrl: string;
-  };
+  }>;
 }
 
-export default function WorkspaceSettingsDefaultPage({ params }: Props) {
-  redirect(`/workspaces/${params.workspaceUrl}/settings/workspace`);
+export default async function WorkspaceSettingsDefaultPage({ params }: Props) {
+  const { workspaceUrl } = await params;
+  redirect(`/workspaces/${workspaceUrl}/settings/workspace`);
 } 

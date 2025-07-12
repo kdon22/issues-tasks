@@ -53,7 +53,7 @@ export default function WorkspaceSettingsLayout({ children }: SettingsLayoutProp
         `/workspaces/${workspaceUrl}/settings/members`,
         `/workspaces/${workspaceUrl}/settings/issue-types`,
         `/workspaces/${workspaceUrl}/settings/status-flows`,
-        `/workspaces/${workspaceUrl}/settings/statuses`,
+        `/workspaces/${workspaceUrl}/settings/issue-fields`,
         `/workspaces/${workspaceUrl}/settings/labels`
       ];
 
@@ -115,12 +115,6 @@ export default function WorkspaceSettingsLayout({ children }: SettingsLayoutProp
           description: 'Configure status flows and workflow transitions'
         },
         {
-          icon: Palette,
-          label: 'Issue Statuses',
-          href: `/workspaces/${workspaceUrl}/settings/statuses`,
-          description: 'Configure individual issue statuses'
-        },
-        {
           icon: Tag,
           label: 'Labels',
           href: `/workspaces/${workspaceUrl}/settings/labels`,
@@ -128,9 +122,9 @@ export default function WorkspaceSettingsLayout({ children }: SettingsLayoutProp
         },
         {
           icon: Settings,
-          label: 'Custom Fields',
-          href: `/workspaces/${workspaceUrl}/settings/custom-fields`,
-          description: 'Create custom fields for issues'
+          label: 'Issue Fields',
+          href: `/workspaces/${workspaceUrl}/settings/issue-fields`,
+          description: 'Configure field sets for issues'
         },
       ]
     },

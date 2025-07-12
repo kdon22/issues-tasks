@@ -1,0 +1,391 @@
+# Resource Settings Page Architecture Guide
+
+## Complete Flow Overview
+
+The resource settings system provides a unified architecture for managing workspace resources through a consistent layout → table → editor pattern.
+
+## 1. Settings Layout Entry Point
+
+**Location:** [app/workspaces/[workspaceUrl]/settings/layout.tsx](mdc:app/workspaces/[workspaceUrl]/settings/layout.tsx)
+
+### Navigation Structure
+```typescript
+const settingsSections: SettingsSection[] = [
+  {
+    title: 'Administration',
+    items: [
+      { icon: Building2, label: 'Workspace', href: `/workspaces/${workspaceUrl}/settings/workspace` },
+      { icon: FolderOpen, label: 'Projects', href: `/workspaces/${workspaceUrl}/settings/projects` },
+      { icon: Users, label: 'Teams', href: `/workspaces/${workspaceUrl}/settings/teams` },
+      { icon: UserPlus, label: 'Members', href: `/workspaces/${workspaceUrl}/settings/members` },
+    ]
+  },
+  {
+    title: 'Configuration',
+    items: [
+      { icon: FileType, label: 'Issue Types', href: `/workspaces/${workspaceUrl}/settings/issue-types` },
+      { icon: GitBranch, label: 'Status Flows', href: `/workspaces/${workspaceUrl}/settings/status-flows` },
+      { icon: Tag, label: 'Labels', href: `/workspaces/${workspaceUrl}/settings/labels` },
+      { icon: Settings, label: 'Issue Fields', href: `/workspaces/${workspaceUrl}/settings/issue-fields` },
+    ]
+  }
+];
+```
+
+### Key Features
+- **Auto-prefetching:** Layout prefetches commonly accessed pages for instant navigation
+- **Active state tracking:** Highlights current section with orange accent
+- **Responsive design:** Sidebar navigation with full-height content area
+- **Breadcrumb navigation:** Shows current workspace context
+
+## 2. Resource Page Patterns
+
+### 2.1 Schema-Based Pages (Standard Pattern)
+
+**Example:** [app/workspaces/[workspaceUrl]/settings/teams/page.tsx](mdc:app/workspaces/[workspaceUrl]/settings/teams/page.tsx)
+
+```typescript
+export default function TeamsPage() {
+  return (
+    <ResourceSettingsPage
+      schema={TEAM_SCHEMA}
+    />
+  );
+}
+```
+
+**Used by:**
+- Teams ([teams.schema.ts](mdc:features/teams/teams.schema.ts))
+- Status Flows ([workflow schema](mdc:features/admin/workflows/schema.ts))
+- Issue Types ([issue-types schema](mdc:features/admin/issue-types/schema.ts))
+
+### 2.2 Custom Editor Pages (Advanced Pattern)
+
+**Example:** [app/workspaces/[workspaceUrl]/settings/labels/page.tsx](mdc:app/workspaces/[workspaceUrl]/settings/labels/page.tsx)
+
+```typescript
+export default function LabelsPage() {
+  return (
+    <LabelEditor
+      onBack={() => router.push(`/workspaces/${workspaceUrl}/settings`)}
+      onUpdate={() => {/* Auto-updated */}}
+    />
+  );
+}
+```
+
+**Used by:**
+- Labels ([label-editor.tsx](mdc:app/workspaces/[workspaceUrl]/settings/labels/label-editor.tsx))
+- Field Sets ([field-set-editor.tsx](mdc:components/field-sets/field-set-editor.tsx))
+
+## 3. ResourceSettingsPage Component
+
+**Location:** [components/resource-settings/resource-settings-page.tsx](mdc:components/resource-settings/resource-settings-page.tsx)
+
+### Core Architecture
+```typescript
+export function ResourceSettingsPage(props: ResourceSettingsPageProps) {
+  // Handles two patterns:
+  if (props.schema) {
+    return <SchemaBasedResourcePage schema={props.schema} />;
+  }
+  
+  if (props.config) {
+    // Legacy config-based approach
+    if (config.customEditor) {
+      return <ConfigBasedResourcePageWithEditor config={config} />;
+    }
+    return <ConfigBasedResourcePage config={config} />;
+  }
+}
+```
+
+### Schema-Based Flow
+1. **Schema Processing:** Converts schema fields to table columns
+2. **Hook Integration:** Uses `resourceHooks[schema.actionPrefix]` for data operations
+3. **Responsive Tables:** Applies mobile/desktop column visibility from schema
+4. **CRUD Operations:** Handles create/update/delete through resource hooks
+
+### Column Configuration
+```typescript
+const columns: SettingsTableColumn[] = schema.fields
+  .filter(field => {
+    const showOnDesktop = field.desktop?.showInTable !== false;
+    const showOnMobile = field.mobile?.showInTable !== false;
+    return showOnDesktop || showOnMobile;
+  })
+  .map(field => ({
+    key: field.key,
+    label: field.label,
+    editable: field.key !== 'id',
+    type: field.type,
+    // Responsive configuration
+    width: field.desktop?.tableWidth || 'auto',
+    mobileWidth: field.mobile?.tableWidth || 'auto',
+    showOnMobile: field.mobile?.showInTable !== false,
+    showOnDesktop: field.desktop?.showInTable !== false,
+    mobileFormat: field.mobile?.displayFormat || 'text'
+  }));
+```
+
+## 4. SettingsTable Component
+
+**Location:** [components/ui/settings-table.tsx](mdc:components/ui/settings-table.tsx)
+
+### Key Features
+- **Inline Editing:** Click edit button to modify rows directly
+- **Drag & Drop:** Reorder items with `draggable` prop
+- **Responsive Design:** Mobile/desktop column visibility
+- **Create Row:** Optional inline creation with `createRowConfig`
+
+### Column Types
+```typescript
+interface SettingsTableColumn {
+  key: string;
+  label: string;
+  type?: 'text' | 'select' | 'color' | 'icon' | 'badge';
+  editable?: boolean;
+  render?: (value: any, item: BaseResource) => React.ReactNode;
+  // Responsive properties
+  showOnMobile?: boolean;
+  showOnDesktop?: boolean;
+  mobileFormat?: 'badge' | 'text' | 'icon' | 'hidden';
+}
+```
+
+### Interaction Flow
+1. **View Mode:** Display data with custom renderers
+2. **Edit Mode:** Replace cells with appropriate input components
+3. **Save/Cancel:** Commit changes or revert to original values
+4. **Delete:** Remove items with confirmation
+
+## 5. Advanced Custom Editors
+
+### 5.1 Status Flow Editor
+
+**Location:** [app/workspaces/[workspaceUrl]/settings/statuses/status-flow-editor.tsx](mdc:app/workspaces/[workspaceUrl]/settings/statuses/status-flow-editor.tsx)
+
+#### Key Features
+- **Hierarchical Status Categories:** Backlog, Planned, In Progress, Completed, Canceled
+- **Progress Pie Visualization:** Shows completion ratio as filled pie chart
+- **Drag & Drop Reordering:** Within categories using @dnd-kit
+- **Inline Creation:** Create statuses directly within categories
+- **Color Memory:** Remembers last used color per category
+
+#### Architecture
+```typescript
+const STATUS_CATEGORIES = [
+  { key: 'BACKLOG', label: 'Backlog', color: '#F59E0B' },
+  { key: 'UNSTARTED', label: 'Planned', color: '#64748B' },
+  { key: 'STARTED', label: 'In Progress', color: '#3B82F6' },
+  { key: 'COMPLETED', label: 'Completed', color: '#10B981' },
+  { key: 'CANCELED', label: 'Canceled', color: '#EF4444' }
+];
+
+// Groups statuses by category for organized display
+const groupedStatuses = STATUS_CATEGORIES.map(category => ({
+  category,
+  statuses: filteredStatuses
+    .filter(status => status.type === category.key)
+    .sort((a, b) => a.position - b.position)
+}));
+```
+
+### 5.2 Label Editor
+
+**Location:** [app/workspaces/[workspaceUrl]/settings/labels/label-editor.tsx](mdc:app/workspaces/[workspaceUrl]/settings/labels/label-editor.tsx)
+
+#### Key Features
+- **Hierarchical Tree Structure:** Labels organized in groups with visual indentation
+- **Drag & Drop Between Groups:** Move labels between groups or reorder within groups
+- **Collapsible Groups:** Hide/show group contents
+- **Diamond Group Icons:** Visual distinction from circular label icons
+- **Inline Creation:** Create labels and groups directly in the interface
+
+#### Tree Structure
+```typescript
+type FlattenedItem = {
+  id: string;
+  type: 'group' | 'label';
+  level: number;  // 0 for top-level, 1 for nested
+  data: LabelGroup | Label;
+  groupId?: string;
+};
+
+// Creates flattened tree for display
+const createFlattenedItems = (): FlattenedItem[] => {
+  const items: FlattenedItem[] = [];
+  
+  // Add ungrouped labels (level 0)
+  ungroupedLabels.forEach(label => {
+    items.push({ id: label.id, type: 'label', level: 0, data: label });
+  });
+  
+  // Add groups and their labels
+  sortedGroups.forEach(group => {
+    items.push({ id: group.id, type: 'group', level: 0, data: group });
+    
+    if (!collapsedGroups.has(group.id)) {
+      groupLabels.forEach(label => {
+        items.push({ id: label.id, type: 'label', level: 1, data: label, groupId: group.id });
+      });
+    }
+  });
+  
+  return items;
+};
+```
+
+### 5.3 Field Set Editor
+
+**Location:** [components/field-sets/field-set-editor.tsx](mdc:components/field-sets/field-set-editor.tsx)
+
+#### Key Features
+- **Dual-Panel Layout:** Available fields on left, configured fields on right
+- **Drag & Drop Configuration:** Move fields between panels
+- **Field Categories:** Organized by type (Core, Tracking, etc.)
+- **Inline Configuration:** Toggle required/visibility settings
+- **Visual Insertion Indicators:** Shows where fields will be dropped
+
+#### Architecture
+```typescript
+// Available fields filtered by category
+const availableFields = Object.values(STANDARD_FIELDS).filter(field => 
+  !formData.configurations.some(config => config.fieldKey === field.key) &&
+  !excludedFields.includes(field.key)
+);
+
+// Configured fields with settings
+const configuredFields = formData.configurations.map(config => ({
+  ...config,
+  field: STANDARD_FIELDS[config.fieldKey]
+}));
+```
+
+## 6. Resource Schema Structure
+
+### Complete Schema Example
+```typescript
+export const TEAM_SCHEMA = {
+  // Factory integration
+  databaseKey: 'teams',      // IndexedDB table name
+  endpoint: 'teams',         // API endpoint
+  actionPrefix: 'team',      // Hook generation (creates useTeam hooks)
+  name: { singular: 'Team', plural: 'Teams' },
+  
+  // UI Configuration
+  display: {
+    title: 'Teams',
+    description: 'Manage teams to organize workspace members',
+    icon: 'Users'
+  },
+  
+  // Field definitions with responsive control
+  fields: [
+    {
+      key: 'name',
+      label: 'Name',
+      type: 'text',
+      required: true,
+      // Mobile configuration
+      mobile: {
+        priority: 'high',
+        displayFormat: 'text',
+        showInTable: true,
+        tableWidth: 'full'
+      },
+      // Desktop configuration
+      desktop: {
+        width: 'lg',
+        sortable: true,
+        filterable: true,
+        showInTable: true,
+        tableWidth: 'auto'
+      },
+      validation: [
+        { type: 'required', message: 'Name is required' },
+        { type: 'minLength', value: 2, message: 'Too short' }
+      ]
+    }
+  ],
+  
+  // Actions and permissions
+  actions: { create: true, update: true, delete: true },
+  permissions: { create: 'workspace.admin', update: 'team.member' }
+};
+```
+
+## 7. Complete User Journey
+
+### 7.1 Navigation Flow
+1. **Settings Landing:** `/workspaces/demo-workspace/settings/` → redirects to `/workspace`
+2. **Layout Navigation:** User clicks "Teams" in sidebar
+3. **Resource Page:** Loads `/workspaces/demo-workspace/settings/teams/`
+4. **Schema Processing:** `TeamsPage` renders `ResourceSettingsPage` with `TEAM_SCHEMA`
+5. **Table Rendering:** `SettingsTable` displays teams with responsive columns
+
+### 7.2 Table Interaction Flow
+1. **Data Loading:** `resourceHooks.team.useList()` fetches team data
+2. **Search/Filter:** User types in search box, filters table rows
+3. **Edit Mode:** User clicks edit icon on a row
+4. **Inline Editing:** Row cells become editable inputs
+5. **Save/Cancel:** User commits changes or cancels edit mode
+6. **Optimistic Updates:** UI updates immediately via resource hooks
+
+### 7.3 Custom Editor Flow (Labels Example)
+1. **Editor Navigation:** User clicks "Labels" in settings sidebar
+2. **Custom Editor:** `LabelEditor` renders with hierarchical tree structure
+3. **Tree Interaction:** User expands/collapses groups, drags labels
+4. **Inline Creation:** User clicks "Add Label" or "Add Group"
+5. **Form Submission:** Creates new items and updates tree immediately
+
+## 8. Development Patterns
+
+### 8.1 Adding New Resource Pages
+```typescript
+// 1. Create schema file
+export const NEW_RESOURCE_SCHEMA = {
+  databaseKey: 'newResources',
+  endpoint: 'new-resources',
+  actionPrefix: 'newResource',
+  // ... schema definition
+};
+
+// 2. Create page component
+export default function NewResourcePage() {
+  return <ResourceSettingsPage schema={NEW_RESOURCE_SCHEMA} />;
+}
+
+// 3. Add to layout navigation
+{
+  icon: NewIcon,
+  label: 'New Resource',
+  href: `/workspaces/${workspaceUrl}/settings/new-resource`
+}
+```
+
+### 8.2 Custom Editor Integration
+```typescript
+// For complex editors that need custom UI
+export default function CustomEditorPage() {
+  return (
+    <CustomEditor
+      onBack={() => router.push(`/workspaces/${workspaceUrl}/settings`)}
+      onUpdate={() => {/* Handle updates */}}
+    />
+  );
+}
+```
+
+## 9. Key Architecture Benefits
+
+- **Consistent UX:** All resource pages follow the same interaction patterns
+- **Responsive Design:** Mobile-first approach with desktop enhancements
+- **Performance:** Optimistic updates and efficient data fetching
+- **Maintainability:** Schema-driven approach reduces code duplication
+- **Extensibility:** Easy to add new resources or customize existing ones
+- **Type Safety:** Full TypeScript support throughout the flow
+description:
+globs:
+alwaysApply: false
+---

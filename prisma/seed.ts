@@ -196,9 +196,9 @@ async function main() {
       identifier: 'WEB',
       description: 'Frontend and web development team',
       workspaceId: workspace.id,
-      avatarType: 'INITIALS',
-      avatarColor: '#6366F1',
-      settings: { isPrivate: false },
+      icon: 'globe:blue',
+      isPrivate: false,
+      settings: {},
     },
   });
 
@@ -215,9 +215,9 @@ async function main() {
       identifier: 'EXEC',
       description: 'Executive and leadership team',
       workspaceId: workspace.id,
-      avatarType: 'INITIALS',
-      avatarColor: '#DC2626',
-      settings: { isPrivate: true },
+      icon: 'shield:red',
+      isPrivate: true,
+      settings: {},
     },
   });
 
@@ -234,9 +234,9 @@ async function main() {
       identifier: 'SUPPORT',
       description: 'Customer support and help desk',
       workspaceId: workspace.id,
-      avatarType: 'INITIALS',
-      avatarColor: '#10B981',
-      settings: { isPrivate: false },
+      icon: 'headphones:green',
+      isPrivate: false,
+      settings: {},
     },
   });
 
@@ -356,6 +356,7 @@ async function main() {
         data: {
           ...stateData,
           statusFlowId: defaultStatusFlow.id,
+          workspaceId: workspace.id,
         },
       });
     }
@@ -384,6 +385,7 @@ async function main() {
         data: {
           ...stateData,
           statusFlowId: bugStatusFlow.id,
+          workspaceId: workspace.id,
         },
       });
     }

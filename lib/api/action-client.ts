@@ -1,4 +1,33 @@
 import { z } from 'zod';
+import { 
+  Team, 
+  Project, 
+  Label, 
+  Member, 
+  IssueType, 
+  State, 
+  StatusFlow, 
+  FieldSet, 
+  Issue, 
+  Comment, 
+  Reaction 
+} from '@/lib/types';
+
+// Static resource configuration to avoid circular dependencies
+const STATIC_RESOURCES = [
+  { actionPrefix: 'team', name: 'Team' },
+  { actionPrefix: 'project', name: 'Project' },
+  { actionPrefix: 'label', name: 'Label' },
+  { actionPrefix: 'labelGroup', name: 'Label Group' },
+  { actionPrefix: 'member', name: 'Member' },
+  { actionPrefix: 'issueType', name: 'Issue Type' },
+  { actionPrefix: 'state', name: 'State' },
+  { actionPrefix: 'statusFlow', name: 'Status Flow' },
+  { actionPrefix: 'fieldSet', name: 'Field Set' },
+  { actionPrefix: 'issue', name: 'Issue' },
+  { actionPrefix: 'comment', name: 'Comment' },
+  { actionPrefix: 'reaction', name: 'Reaction' }
+];
 
 // Action request interface
 export interface ActionRequest {
@@ -24,17 +53,45 @@ export interface ActionResponse<T = any> {
   action: string;
 }
 
-// IndexedDB schema for offline storage
+// Resource type mapping for TypeScript types
+const RESOURCE_TYPE_MAP = {
+  'team': 'Team',
+  'project': 'Project',
+  'label': 'Label',
+  'member': 'Member',
+  'issueType': 'IssueType',
+  'state': 'State',
+  'statusFlow': 'StatusFlow',
+  'fieldSet': 'FieldSet',
+  'issue': 'Issue',
+  'comment': 'Comment',
+  'reaction': 'Reaction'
+} as const;
+
+// Use static resources to avoid circular dependencies
+const AVAILABLE_RESOURCES = STATIC_RESOURCES.map(resource => ({
+  actionPrefix: resource.actionPrefix,
+  name: resource.name,
+  storeName: resource.actionPrefix + 's' // pluralize for storage
+}));
+
+console.log('🔍 ActionClient - Discovered resources:', AVAILABLE_RESOURCES);
+
+// Create plural mappings for IndexedDB stores
+const STORE_MAPPINGS = AVAILABLE_RESOURCES.reduce((acc, resource) => {
+  acc[resource.actionPrefix] = resource.storeName;
+  return acc;
+}, {} as Record<string, string>);
+
+console.log('🗺️ ActionClient - Store mappings:', STORE_MAPPINGS);
+
+// IndexedDB schema for offline storage - now dynamic!
 export interface OfflineStorage {
-  teams: Team[];
-  projects: Project[];
-  labels: Label[];
-  members: Member[];
-  issueTypes: IssueType[];
-  states: State[];
-  issues: Issue[];
-  comments: Comment[];
-  reactions: Reaction[];
+  [key: string]: any[] | {
+    lastSync: number;
+    pendingActions: ActionRequest[];
+    workspaceId: string;
+  }; // Dynamic resource arrays or meta object
   meta: {
     lastSync: number;
     pendingActions: ActionRequest[];
@@ -42,108 +99,9 @@ export interface OfflineStorage {
   };
 }
 
-// Resource interfaces
-export interface Team {
-  id: string;
-  name: string;
-  identifier: string;
-  description?: string;
-  icon?: string; // Combined "iconName:color" format
-  workspaceId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  status: string;
-  workspaceId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Label {
-  id: string;
-  name: string;
-  description?: string;
-  color: string;
-  workspaceId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Member {
-  id: string;
-  name?: string;
-  email: string;
-  role: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface IssueType {
-  id: string;
-  name: string;
-  description?: string;
-  icon?: string;
-  workspaceId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface State {
-  id: string;
-  name: string;
-  description?: string;
-  color: string;
-  type: string;
-  position: number;
-  statusFlowId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Issue {
-  id: string;
-  title: string;
-  description?: string;
-  identifier: string;
-  priority: string;
-  workspaceId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Reaction {
-  id: string;
-  emoji: string;
-  count: number;
-  users: {
-    id: string;
-    name: string | null;
-    email: string;
-  }[];
-  hasReacted: boolean;
-}
-
-export interface Comment {
-  id: string;
-  content: string;
-  issueId: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-  user: {
-    id: string;
-    name: string | null;
-    email: string;
-  };
-  reactions: Reaction[];
-  replies?: Comment[];
-}
+// CRUD operation types
+const CRUD_OPERATIONS = ['create', 'update', 'delete', 'list', 'get'] as const;
+type CrudOperation = typeof CRUD_OPERATIONS[number];
 
 // Ultra-fast action client class
 export class ActionClient {
@@ -152,12 +110,75 @@ export class ActionClient {
   private db: IDBDatabase | null = null;
   private isOnline = true;
   private pendingActions: ActionRequest[] = [];
+  private resourceMethods: Record<string, Record<string, Function>> = {};
 
   constructor(workspaceUrl: string) {
     this.workspaceUrl = workspaceUrl;
     this.baseUrl = `/api/workspaces/${workspaceUrl}/actions`;
     this.initOfflineDetection();
     this.initIndexedDB();
+    this.generateResourceMethods();
+  }
+
+  // Generate all resource methods dynamically
+  private generateResourceMethods() {
+    AVAILABLE_RESOURCES.forEach(resource => {
+      const { actionPrefix } = resource;
+      
+      // Create methods object for this resource
+      this.resourceMethods[actionPrefix] = {};
+      
+      // Generate CRUD operations
+      CRUD_OPERATIONS.forEach(operation => {
+        const methodName = operation === 'list' ? 'list' : operation;
+        
+        this.resourceMethods[actionPrefix][methodName] = async (...args: any[]) => {
+          return this.executeCrudOperation(actionPrefix, operation, ...args);
+        };
+      });
+    });
+  }
+
+  // Execute CRUD operation generically
+  private async executeCrudOperation(
+    actionPrefix: string, 
+    operation: CrudOperation, 
+    ...args: any[]
+  ): Promise<ActionResponse<any>> {
+    const action = `${actionPrefix}.${operation}`;
+    
+    // Build request based on operation type
+    let request: ActionRequest;
+    
+    switch (operation) {
+      case 'create':
+        request = { action, data: args[0] };
+        break;
+      case 'update':
+        request = { action, resourceId: args[0], data: args[1] };
+        break;
+      case 'delete':
+        request = { action, resourceId: args[0] };
+        break;
+      case 'get':
+        request = { action, resourceId: args[0] };
+        break;
+      case 'list':
+        request = { action };
+        break;
+      default:
+        throw new Error(`Unknown operation: ${operation}`);
+    }
+    
+    return this.executeAction(request);
+  }
+
+  // Dynamic method access - creates methods on-demand
+  private getResourceMethods(actionPrefix: string) {
+    if (!this.resourceMethods[actionPrefix]) {
+      throw new Error(`Unknown resource type: ${actionPrefix}`);
+    }
+    return this.resourceMethods[actionPrefix];
   }
 
   // Initialize offline/online detection
@@ -172,7 +193,7 @@ export class ActionClient {
     });
   }
 
-  // Initialize IndexedDB for offline storage
+  // Initialize IndexedDB for offline storage - now dynamic!
   private async initIndexedDB(): Promise<void> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(`issues-tasks-${this.workspaceUrl}`, 1);
@@ -186,19 +207,27 @@ export class ActionClient {
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
         
-        // Create object stores for each resource type
-        const stores = ['teams', 'projects', 'labels', 'members', 'issueTypes', 'states', 'issues', 'comments', 'reactions', 'meta'];
+        // Create object stores for each resource type dynamically
+        const storeNames = [...Object.values(STORE_MAPPINGS), 'meta'];
         
-        stores.forEach(storeName => {
+        console.log('🗄️ ActionClient - Creating IndexedDB stores:', storeNames);
+        console.log('🗄️ ActionClient - Store mappings:', STORE_MAPPINGS);
+        
+        storeNames.forEach(storeName => {
           if (!db.objectStoreNames.contains(storeName)) {
+            console.log(`🗄️ ActionClient - Creating store: ${storeName}`);
             const store = db.createObjectStore(storeName, { keyPath: 'id' });
             if (storeName !== 'meta') {
               store.createIndex('workspaceId', 'workspaceId', { unique: false });
               store.createIndex('createdAt', 'createdAt', { unique: false });
               store.createIndex('updatedAt', 'updatedAt', { unique: false });
             }
+          } else {
+            console.log(`🗄️ ActionClient - Store already exists: ${storeName}`);
           }
         });
+        
+        console.log('🗄️ ActionClient - Final IndexedDB stores:', Array.from(db.objectStoreNames));
       };
     });
   }
@@ -266,7 +295,7 @@ export class ActionClient {
     };
   }
 
-  // Cache data in IndexedDB
+  // Cache data in IndexedDB - now dynamic!
   private async cacheData(request: ActionRequest, data: any): Promise<void> {
     if (!this.db) return;
 
@@ -287,21 +316,10 @@ export class ActionClient {
     }
   }
 
-  // Get resource type from action name
+  // Get resource type from action name - now dynamic!
   private getResourceTypeFromAction(action: string): string | null {
     const [resourceType] = action.split('.');
-    const resourceMap: Record<string, string> = {
-      'team': 'teams',
-      'project': 'projects',
-      'label': 'labels',
-      'member': 'members',
-      'issueType': 'issueTypes',
-      'state': 'states',
-      'issue': 'issues',
-      'comment': 'comments',
-      'reaction': 'reactions'
-    };
-    return resourceMap[resourceType] || null;
+    return STORE_MAPPINGS[resourceType] || null;
   }
 
   // Get cached data from IndexedDB
@@ -370,222 +388,24 @@ export class ActionClient {
     await this.savePendingActions();
   }
 
-  // Resource-specific convenience methods
-  
-  // Teams
-  async createTeam(data: Partial<Team>): Promise<ActionResponse<Team>> {
-    return this.executeAction({
-      action: 'team.create',
-      data
-    });
-  }
+  // Dynamic resource method access - replaces all the hardcoded methods!
+  // Usage: client.team.create(data) or client.project.update(id, data)
+  get team() { return this.getResourceMethods('team'); }
+  get project() { return this.getResourceMethods('project'); }
+  get label() { return this.getResourceMethods('label'); }
+  get labelGroup() { return this.getResourceMethods('labelGroup'); }
+  get member() { return this.getResourceMethods('member'); }
+  get issueType() { return this.getResourceMethods('issueType'); }
+  get state() { return this.getResourceMethods('state'); }
+  get statusFlow() { return this.getResourceMethods('statusFlow'); }
+  get fieldSet() { return this.getResourceMethods('fieldSet'); }
+  get issue() { return this.getResourceMethods('issue'); }
+  get comment() { return this.getResourceMethods('comment'); }
+  get reaction() { return this.getResourceMethods('reaction'); }
 
-  async updateTeam(id: string, data: Partial<Team>): Promise<ActionResponse<Team>> {
-    return this.executeAction({
-      action: 'team.update',
-      resourceId: id,
-      data
-    });
-  }
-
-  async deleteTeam(id: string): Promise<ActionResponse<void>> {
-    return this.executeAction({
-      action: 'team.delete',
-      resourceId: id
-    });
-  }
-
-  async listTeams(): Promise<ActionResponse<Team[]>> {
-    return this.executeAction({
-      action: 'team.list'
-    });
-  }
-
-  async getTeam(id: string): Promise<ActionResponse<Team>> {
-    return this.executeAction({
-      action: 'team.get',
-      resourceId: id
-    });
-  }
-
-  // Projects
-  async createProject(data: Partial<Project>): Promise<ActionResponse<Project>> {
-    return this.executeAction({
-      action: 'project.create',
-      data
-    });
-  }
-
-  async updateProject(id: string, data: Partial<Project>): Promise<ActionResponse<Project>> {
-    return this.executeAction({
-      action: 'project.update',
-      resourceId: id,
-      data
-    });
-  }
-
-  async deleteProject(id: string): Promise<ActionResponse<void>> {
-    return this.executeAction({
-      action: 'project.delete',
-      resourceId: id
-    });
-  }
-
-  async listProjects(): Promise<ActionResponse<Project[]>> {
-    return this.executeAction({
-      action: 'project.list'
-    });
-  }
-
-  async getProject(id: string): Promise<ActionResponse<Project>> {
-    return this.executeAction({
-      action: 'project.get',
-      resourceId: id
-    });
-  }
-
-  // Labels
-  async createLabel(data: Partial<Label>): Promise<ActionResponse<Label>> {
-    return this.executeAction({
-      action: 'label.create',
-      data
-    });
-  }
-
-  async updateLabel(id: string, data: Partial<Label>): Promise<ActionResponse<Label>> {
-    return this.executeAction({
-      action: 'label.update',
-      resourceId: id,
-      data
-    });
-  }
-
-  async deleteLabel(id: string): Promise<ActionResponse<void>> {
-    return this.executeAction({
-      action: 'label.delete',
-      resourceId: id
-    });
-  }
-
-  async listLabels(): Promise<ActionResponse<Label[]>> {
-    return this.executeAction({
-      action: 'label.list'
-    });
-  }
-
-  async getLabel(id: string): Promise<ActionResponse<Label>> {
-    return this.executeAction({
-      action: 'label.get',
-      resourceId: id
-    });
-  }
-
-  // Members
-  async createMember(data: Partial<Member>): Promise<ActionResponse<Member>> {
-    return this.executeAction({
-      action: 'member.create',
-      data
-    });
-  }
-
-  async updateMember(id: string, data: Partial<Member>): Promise<ActionResponse<Member>> {
-    return this.executeAction({
-      action: 'member.update',
-      resourceId: id,
-      data
-    });
-  }
-
-  async deleteMember(id: string): Promise<ActionResponse<void>> {
-    return this.executeAction({
-      action: 'member.delete',
-      resourceId: id
-    });
-  }
-
-  async listMembers(): Promise<ActionResponse<Member[]>> {
-    return this.executeAction({
-      action: 'member.list'
-    });
-  }
-
-  async getMember(id: string): Promise<ActionResponse<Member>> {
-    return this.executeAction({
-      action: 'member.get',
-      resourceId: id
-    });
-  }
-
-  // Issue Types
-  async createIssueType(data: Partial<IssueType>): Promise<ActionResponse<IssueType>> {
-    return this.executeAction({
-      action: 'issueType.create',
-      data
-    });
-  }
-
-  async updateIssueType(id: string, data: Partial<IssueType>): Promise<ActionResponse<IssueType>> {
-    return this.executeAction({
-      action: 'issueType.update',
-      resourceId: id,
-      data
-    });
-  }
-
-  async deleteIssueType(id: string): Promise<ActionResponse<void>> {
-    return this.executeAction({
-      action: 'issueType.delete',
-      resourceId: id
-    });
-  }
-
-  async listIssueTypes(): Promise<ActionResponse<IssueType[]>> {
-    return this.executeAction({
-      action: 'issueType.list'
-    });
-  }
-
-  async getIssueType(id: string): Promise<ActionResponse<IssueType>> {
-    return this.executeAction({
-      action: 'issueType.get',
-      resourceId: id
-    });
-  }
-
-  // States
-  async createState(data: Partial<State>): Promise<ActionResponse<State>> {
-    return this.executeAction({
-      action: 'state.create',
-      data
-    });
-  }
-
-  async updateState(id: string, data: Partial<State>): Promise<ActionResponse<State>> {
-    return this.executeAction({
-      action: 'state.update',
-      resourceId: id,
-      data
-    });
-  }
-
-  async deleteState(id: string): Promise<ActionResponse<void>> {
-    return this.executeAction({
-      action: 'state.delete',
-      resourceId: id
-    });
-  }
-
-  async listStates(): Promise<ActionResponse<State[]>> {
-    return this.executeAction({
-      action: 'state.list'
-    });
-  }
-
-  async getState(id: string): Promise<ActionResponse<State>> {
-    return this.executeAction({
-      action: 'state.get',
-      resourceId: id
-    });
+  // Alternative: Dynamic resource access for any resource type
+  resource(actionPrefix: string) {
+    return this.getResourceMethods(actionPrefix);
   }
 
   // Hierarchical operations (comments, reactions)
@@ -605,32 +425,10 @@ export class ActionClient {
     });
   }
 
-  async updateComment(id: string, data: Partial<Comment>): Promise<ActionResponse<Comment>> {
-    return this.executeAction({
-      action: 'comment.update',
-      resourceId: id,
-      data
-    });
-  }
-
-  async deleteComment(id: string): Promise<ActionResponse<void>> {
-    return this.executeAction({
-      action: 'comment.delete',
-      resourceId: id
-    });
-  }
-
   async listComments(issueId: string): Promise<ActionResponse<Comment[]>> {
     return this.executeAction({
       action: 'comment.list',
       parentId: issueId
-    });
-  }
-
-  async deleteReaction(id: string): Promise<ActionResponse<void>> {
-    return this.executeAction({
-      action: 'reaction.delete',
-      resourceId: id
     });
   }
 
@@ -664,10 +462,19 @@ export class ActionClient {
       await this.cacheBootstrapData(response.data);
     }
 
+    // Bootstrap timing
     const clientTime = Date.now() - startTime;
-    console.log(`🚀 Workspace bootstrap completed in ${clientTime}ms`);
     
-    return response;
+    return {
+      success: true,
+      data: {
+        ...response.data,
+        clientTime,
+        timestamp: Date.now()
+      },
+      timestamp: Date.now(),
+      action: 'workspace.bootstrap'
+    };
   }
 
   // Cache all bootstrap data efficiently
@@ -680,17 +487,11 @@ export class ActionClient {
       // Clear existing data first
       await this.clearAllCaches();
       
-      // Cache all resource types
-      const cachePromises = [
-        this.cacheResourceArray('teams', data.teams),
-        this.cacheResourceArray('projects', data.projects),
-        this.cacheResourceArray('labels', data.labels),
-        this.cacheResourceArray('members', data.members),
-        this.cacheResourceArray('issueTypes', data.issueTypes),
-        this.cacheResourceArray('states', data.states),
-        this.cacheResourceArray('issues', data.issues),
-        this.cacheResourceArray('comments', data.comments)
-      ];
+      // Cache all resource types dynamically
+      const cachePromises = AVAILABLE_RESOURCES.map(resource => {
+        const resourceData = data[resource.storeName];
+        return this.cacheResourceArray(resource.storeName, resourceData);
+      });
 
       await Promise.all(cachePromises);
 
@@ -743,13 +544,13 @@ export class ActionClient {
     });
   }
 
-  // Clear all caches (for fresh bootstrap)
+  // Clear all caches (for fresh bootstrap) - now dynamic!
   private async clearAllCaches(): Promise<void> {
     if (!this.db) return;
 
-    const stores = ['teams', 'projects', 'labels', 'members', 'issueTypes', 'states', 'issues', 'comments'];
+    const storeNames = Object.values(STORE_MAPPINGS);
     
-    const clearPromises = stores.map(storeName => {
+    const clearPromises = storeNames.map(storeName => {
       return new Promise<void>((resolve, reject) => {
         const transaction = this.db!.transaction([storeName], 'readwrite');
         const store = transaction.objectStore(storeName);
@@ -802,6 +603,11 @@ export class ActionClient {
     return response.success ? response.data : [];
   }
 
+  // Get available resource types - useful for debugging or dynamic UIs
+  getAvailableResources(): string[] {
+    return AVAILABLE_RESOURCES.map(r => r.actionPrefix);
+  }
+
   // Utility methods
   isOffline(): boolean {
     return !this.isOnline;
@@ -814,10 +620,10 @@ export class ActionClient {
   async clearCache(): Promise<void> {
     if (!this.db) return;
 
-    const stores = ['teams', 'projects', 'labels', 'members', 'issueTypes', 'states', 'issues', 'comments', 'reactions'];
-    const transaction = this.db.transaction(stores, 'readwrite');
+    const storeNames = Object.values(STORE_MAPPINGS);
+    const transaction = this.db.transaction(storeNames, 'readwrite');
     
-    stores.forEach(storeName => {
+    storeNames.forEach(storeName => {
       transaction.objectStore(storeName).clear();
     });
   }

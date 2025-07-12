@@ -94,7 +94,9 @@ model Workspace {
   // New relations
   projects        Project[]
   statusFlows     StatusFlow[]
+  states          State[]
   labels          Label[]
+  labelGroups     LabelGroup[]
   issues          Issue[]
   issueTypes      IssueType[]
   activities      Activity[]
@@ -278,15 +280,36 @@ model State {
   type         StateType
   position     Float      @default(0)
   statusFlowId String
+  workspaceId  String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   
   statusFlow   StatusFlow @relation(fields: [statusFlowId], references: [id], onDelete: Cascade)
+  workspace    Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   issues       Issue[]
   
   @@unique([statusFlowId, name])
   @@index([statusFlowId])
+  @@index([workspaceId])
   @@map("states")
+}
+
+model LabelGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#6B7280")
+  position    Int      @default(0)
+  workspaceId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  labels      Label[]
+  
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("label_groups")
 }
 
 model Label {
@@ -294,22 +317,22 @@ model Label {
   name        String
   description String?
   color       String
+  position    Int      @default(0)
   teamId      String?
   workspaceId String
-  parentId    String?  // For label groups
+  groupId     String?  // Reference to LabelGroup
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  team        Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  parent      Label?    @relation("LabelHierarchy", fields: [parentId], references: [id])
-  children    Label[]   @relation("LabelHierarchy")
+  team        Team?      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  group       LabelGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   issues      IssueLabel[]
   
   @@unique([workspaceId, name])
   @@index([teamId])
   @@index([workspaceId])
-  @@index([parentId])
+  @@index([groupId])
   @@map("labels")
 }
 

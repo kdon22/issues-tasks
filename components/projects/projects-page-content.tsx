@@ -2,54 +2,37 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { CreateProjectDialog } from './create-project-dialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, Settings, GitBranch, Archive, MoreHorizontal } from 'lucide-react';
 
 interface ProjectsPageContentProps {
   workspaceUrl: string;
 }
 
-export function ProjectsPageContent({ workspaceUrl }: ProjectsPageContentProps) {
+export function ProjectsPageContent() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   return (
-    <>
-      <div className="space-y-6">
-        {/* Projects content would go here */}
-        <div className="bg-white rounded-lg border p-6">
-          <div className="text-center space-y-4">
-            <h3 className="text-lg font-semibold">No Projects Yet</h3>
-            <p className="text-gray-600">
-              You haven't created any projects yet. Start by creating your first project.
-            </p>
-            <Button 
-              onClick={() => setShowCreateDialog(true)}
-              className="w-full"
-            >
-              Create Project
-            </Button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Projects</h2>
+          <p className="text-muted-foreground">
+            Manage your team's projects and track their progress
+          </p>
         </div>
-        
-        <div className="bg-white rounded-lg border p-6">
-          <div className="text-center space-y-4">
-            <h3 className="text-lg font-semibold">Need Teams?</h3>
-            <p className="text-gray-600">
-              Create teams to organize your projects better.
-            </p>
-            <Button variant="outline" className="w-full" asChild>
-              <a href={`/workspaces/${workspaceUrl}/settings/teams`}>
-                Manage Teams
-              </a>
-            </Button>
-          </div>
-        </div>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          New Project
+        </Button>
       </div>
 
-      <CreateProjectDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        workspaceUrl={workspaceUrl}
-      />
-    </>
+      {/* Project cards grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Add project cards here */}
+      </div>
+
+      {/* Note: CreateProjectDialog was removed as projects are now managed through the generic resource settings page */}
+    </div>
   );
 } 

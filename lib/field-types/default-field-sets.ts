@@ -8,14 +8,12 @@ export const DEFAULT_FIELD_SET = {
   description: 'Standard fields for all issues',
   isDefault: true,
   configurations: [
-    { fieldKey: 'title', isRequired: true, isVisible: true, showOnSubtask: true, showOnNewIssue: true, displayOrder: 0 },
-    { fieldKey: 'description', isRequired: false, isVisible: true, showOnSubtask: true, showOnNewIssue: true, displayOrder: 1 },
-    { fieldKey: 'state', isRequired: true, isVisible: true, showOnSubtask: true, showOnNewIssue: true, displayOrder: 2 },
-    { fieldKey: 'priority', isRequired: false, isVisible: true, showOnSubtask: false, showOnNewIssue: true, displayOrder: 3 },
-    { fieldKey: 'assignee', isRequired: false, isVisible: true, showOnSubtask: true, showOnNewIssue: true, displayOrder: 4 },
-    { fieldKey: 'team', isRequired: true, isVisible: true, showOnSubtask: false, showOnNewIssue: true, displayOrder: 5 },
-    { fieldKey: 'labels', isRequired: false, isVisible: true, showOnSubtask: false, showOnNewIssue: true, displayOrder: 6 },
-    { fieldKey: 'dueDate', isRequired: false, isVisible: true, showOnSubtask: true, showOnNewIssue: false, displayOrder: 7 }
+    { fieldKey: 'status', isRequired: true, isVisible: true, showOnSubtask: true, showOnNewIssue: true, displayOrder: 0 },
+    { fieldKey: 'priority', isRequired: false, isVisible: true, showOnSubtask: false, showOnNewIssue: true, displayOrder: 1 },
+    { fieldKey: 'assignee', isRequired: false, isVisible: true, showOnSubtask: true, showOnNewIssue: true, displayOrder: 2 },
+    { fieldKey: 'team', isRequired: true, isVisible: true, showOnSubtask: false, showOnNewIssue: true, displayOrder: 3 },
+    { fieldKey: 'labels', isRequired: false, isVisible: true, showOnSubtask: false, showOnNewIssue: true, displayOrder: 4 },
+    { fieldKey: 'dueDate', isRequired: false, isVisible: true, showOnSubtask: true, showOnNewIssue: false, displayOrder: 5 }
   ]
 };
 

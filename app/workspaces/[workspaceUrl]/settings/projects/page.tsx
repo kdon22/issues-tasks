@@ -1,15 +1,12 @@
 "use client";
 
-import { ResourceSettingsPage, generateResourceConfig } from '@/components/settings/resource-settings-page';
+import { ResourceSettingsPage } from '@/components/resource-settings/resource-settings-page';
+import { PROJECT_SCHEMA } from '@/features/projects/projects.schema';
 
 export default function ProjectsPage() {
-  const config = generateResourceConfig('project');
-  
   return (
     <ResourceSettingsPage
-      config={config}
-      title="Projects"
-      description="Manage projects in your workspace"
+      schema={PROJECT_SCHEMA}
     />
   );
 } 

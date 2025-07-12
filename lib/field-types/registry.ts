@@ -57,31 +57,6 @@ export const FIELD_CATEGORIES: Record<FieldCategory, { label: string; icon: stri
 
 export const STANDARD_FIELDS: Record<string, FieldType> = {
   // Core Fields
-  title: {
-    key: 'title',
-    label: 'Title',
-    description: 'The issue title or summary',
-    category: 'core',
-    inputType: 'text',
-    required: true,
-    system: true,
-    icon: 'type',
-    validation: {
-      required: true,
-      min: 1,
-      max: 255
-    }
-  },
-  description: {
-    key: 'description',
-    label: 'Description',
-    description: 'Detailed description of the issue',
-    category: 'core',
-    inputType: 'textarea',
-    required: false,
-    system: true,
-    icon: 'align-left'
-  },
   state: {
     key: 'state',
     label: 'Status',
@@ -232,22 +207,22 @@ export const DEFAULT_FIELD_SETS = {
   standard: {
     name: 'Standard Issue',
     description: 'Default fields for most issues',
-    fields: ['title', 'description', 'state', 'priority', 'assignee', 'project', 'team', 'labels', 'dueDate', 'estimate']
+    fields: ['status', 'priority', 'assignee', 'project', 'team', 'labels', 'dueDate', 'estimate']
   },
   bug: {
     name: 'Bug Report',
     description: 'Fields optimized for bug tracking',
-    fields: ['title', 'description', 'state', 'priority', 'assignee', 'project', 'team', 'labels', 'dueDate']
+    fields: ['status', 'priority', 'assignee', 'project', 'team', 'labels', 'dueDate']
   },
   feature: {
     name: 'Feature Request',
     description: 'Fields for new features and enhancements',
-    fields: ['title', 'description', 'state', 'priority', 'assignee', 'project', 'team', 'labels', 'dueDate', 'estimate']
+    fields: ['status', 'priority', 'assignee', 'project', 'team', 'labels', 'dueDate', 'estimate']
   },
   subtask: {
     name: 'Subtask',
     description: 'Minimal fields for subtasks',
-    fields: ['title', 'description', 'state', 'assignee', 'dueDate', 'estimate']
+    fields: ['status', 'assignee', 'dueDate', 'estimate']
   }
 };
 

@@ -42,6 +42,8 @@ export * from './providers/session-provider';
 // UI Components
 export * from './ui/data-table';
 export * from './ui/table';
+export * from './ui/settings-header';
+export * from './ui/settings-table';
 
 // Members
 export * from './members/member-table';

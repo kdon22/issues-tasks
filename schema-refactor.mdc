@@ -1,0 +1,545 @@
+# Enhanced Schema Refactoring Guide: Single Source of Truth (SSOT)
+
+## Overview
+Each feature should have ONE schema file that serves as the complete Single Source of Truth. This schema works with the factory system and provides full responsive table control.
+
+## Complete SSOT Schema Structure
+
+### 1. Factory Integration (REQUIRED)
+```typescript
+// Factory integration - EXACT values required
+databaseKey: 'teams',      // IndexedDB table name (usually plural)
+endpoint: 'teams',         // API endpoint URL (usually plural)
+actionPrefix: 'team',      // Hook generation (SINGULAR - creates "team" hooks)
+name: { singular: 'Team', plural: 'Teams' },  // Display names
+```
+
+**CRITICAL:** 
+- `databaseKey` = IndexedDB table name (plural)
+- `actionPrefix` = Hook generation (singular, creates hooks like "team", "project")
+- `endpoint` = API endpoint URL (plural)
+- Available hooks based on `actionPrefix`: `team`, `project`, `label`, `member`, `issueType`, `statusFlow`, `state`, etc.
+
+### 2. Enhanced Field Configuration
+Each field supports full responsive table control:
+
+```typescript
+fields: [
+  {
+    key: 'name',
+    label: 'Name',
+    type: 'text',
+    required: true,
+    // Mobile table configuration
+    mobile: {
+      priority: 'high',              // 'high' | 'medium' | 'low'
+      displayFormat: 'text',         // 'text' | 'badge' | 'icon' | 'hidden'
+      showInTable: true,             // Show column on mobile
+      tableWidth: 'full',            // 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'auto'
+      condensed: false               // Use condensed display
+    },
+    // Desktop table configuration
+    desktop: {
+      width: 'lg',                   // Form field width
+      sortable: true,                // Allow column sorting
+      filterable: true,              // Allow column filtering
+      showInTable: true,             // Show column on desktop
+      tableWidth: 'auto'             // 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'auto'
+    },
+    validation: [
+      { type: 'required', message: 'Name is required' },
+      { type: 'minLength', value: 2, message: 'Too short' }
+    ]
+  }
+]
+```
+
+### 3. Column Ordering
+Columns render in the **EXACT SAME ORDER** as your `schema.fields` array. To change column order, reorder the fields array.
+
+**Example:**
+```typescript
+fields: [
+  { key: 'name', ... },      // 1st column
+  { key: 'identifier', ... }, // 2nd column
+  { key: 'description', ... }, // 3rd column
+  { key: 'icon', ... },      // 4th column
+]
+```
+
+### 4. Table Visibility Control
+- **Desktop Only:** `mobile.showInTable: false, desktop.showInTable: true`
+- **Mobile Only:** `mobile.showInTable: true, desktop.showInTable: false`
+- **Both:** `mobile.showInTable: true, desktop.showInTable: true`
+- **Neither:** `mobile.showInTable: false, desktop.showInTable: false`
+
+### 5. Available Field Types
+- `text` - Text input
+- `textarea` - Multi-line text
+- `select` - Dropdown selection
+- `multiSelect` - Multiple selections
+- `switch` - Boolean toggle
+- `number` - Numeric input
+- `color` - Color picker
+- `icon` - Icon picker
+- `email` - Email input
+- `url` - URL input
+- `date` - Date picker
+- `avatar` - Avatar upload
+
+### 6. Validation Rules
+```typescript
+validation: [
+  { type: 'required', message: 'Field is required' },
+  { type: 'minLength', value: 2, message: 'Too short' },
+  { type: 'maxLength', value: 50, message: 'Too long' },
+  { type: 'pattern', value: /^[A-Z]+$/, message: 'Must be uppercase' },
+  { type: 'email', message: 'Invalid email' },
+  { type: 'url', message: 'Invalid URL' },
+  { type: 'min', value: 0, message: 'Must be positive' },
+  { type: 'max', value: 100, message: 'Must be under 100' }
+]
+```
+
+## Complete Example Schema
+
+```typescript
+// features/teams/teams.schema.ts
+import { z } from 'zod';
+
+// 1. Validation Schema
+export const TeamValidationSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  identifier: z.string().min(1, 'Identifier is required'),
+  description: z.string().optional(),
+  icon: z.string().optional(),
+  timezone: z.string().optional(),
+  isPrivate: z.boolean().optional()
+});
+
+// 2. Database Schema
+export const TEAM_DATABASE_SCHEMA = {
+  model: 'Team',
+  fields: {
+    id: { type: 'String', id: true, default: 'cuid()' },
+    name: { type: 'String' },
+    identifier: { type: 'String', unique: true },
+    description: { type: 'String', optional: true },
+    icon: { type: 'String', optional: true },
+    timezone: { type: 'String', optional: true },
+    isPrivate: { type: 'Boolean', default: false },
+    workspaceId: { type: 'String' }
+  },
+  relations: {
+    workspace: { type: 'belongsTo', model: 'Workspace', foreignKey: 'workspaceId' },
+    members: { type: 'hasMany', model: 'WorkspaceMember', foreignKey: 'teamId' },
+    projects: { type: 'hasMany', model: 'Project', through: 'ProjectTeam' }
+  }
+};
+
+// 3. Complete Resource Schema (SSOT)
+export const TEAM_SCHEMA = {
+  // Factory integration (REQUIRED)
+  databaseKey: 'teams',
+  endpoint: 'teams',
+  actionPrefix: 'team',
+  name: { singular: 'Team', plural: 'Teams' },
+  
+  // UI Configuration
+  display: {
+    title: 'Teams',
+    description: 'Manage teams to organize workspace members',
+    icon: 'Users'
+  },
+  
+  // Field definitions with full responsive control
+  fields: [
+    {
+      key: 'name',
+      label: 'Name',
+      type: 'text',
+      required: true,
+      mobile: {
+        priority: 'high',
+        displayFormat: 'text',
+        showInTable: true,
+        tableWidth: 'full'
+      },
+      desktop: {
+        width: 'lg',
+        sortable: true,
+        filterable: true,
+        showInTable: true,
+        tableWidth: 'auto'
+      },
+      validation: [
+        { type: 'required', message: 'Name is required' },
+        { type: 'minLength', value: 2, message: 'Too short' }
+      ]
+    },
+    {
+      key: 'identifier',
+      label: 'Identifier',
+      type: 'text',
+      required: true,
+      mobile: {
+        priority: 'high',
+        displayFormat: 'badge',
+        showInTable: true,
+        tableWidth: 'sm'
+      },
+      desktop: {
+        width: 'sm',
+        sortable: true,
+        filterable: true,
+        showInTable: true,
+        tableWidth: 'sm'
+      },
+      validation: [
+        { type: 'required', message: 'Identifier is required' },
+        { type: 'minLength', value: 2, message: 'Too short' }
+      ]
+    },
+    {
+      key: 'description',
+      label: 'Description',
+      type: 'textarea',
+      required: false,
+      mobile: {
+        priority: 'low',
+        displayFormat: 'text',
+        showInTable: false,  // Hidden on mobile
+        condensed: true
+      },
+      desktop: {
+        width: 'lg',
+        sortable: false,
+        filterable: false,
+        showInTable: true,   // Shown on desktop
+        tableWidth: 'xl'
+      },
+      validation: [
+        { type: 'maxLength', value: 500, message: 'Too long' }
+      ]
+    },
+    {
+      key: 'icon',
+      label: 'Icon',
+      type: 'icon',
+      required: false,
+      mobile: {
+        priority: 'medium',
+        displayFormat: 'icon',
+        showInTable: true,
+        tableWidth: 'xs'
+      },
+      desktop: {
+        width: 'xs',
+        sortable: false,
+        showInTable: true,
+        tableWidth: 'xs'
+      }
+    },
+    {
+      key: 'timezone',
+      label: 'Timezone',
+      type: 'select',
+      required: false,
+      mobile: {
+        priority: 'low',
+        displayFormat: 'text',
+        showInTable: false // Hidden on mobile
+      },
+      desktop: {
+        width: 'md',
+        sortable: true,
+        filterable: true,
+        showInTable: true,
+        tableWidth: 'md'
+      }
+    },
+    {
+      key: 'isPrivate',
+      label: 'Private',
+      type: 'switch',
+      required: false,
+      mobile: {
+        priority: 'medium',
+        displayFormat: 'badge',
+        showInTable: true,
+        tableWidth: 'xs'
+      },
+      desktop: {
+        width: 'xs',
+        sortable: true,
+        filterable: true,
+        showInTable: true,
+        tableWidth: 'xs'
+      }
+    }
+  ],
+  
+  // Search configuration
+  search: {
+    fields: ['name', 'identifier', 'description'],
+    placeholder: 'Search teams...'
+  },
+  
+  // Actions
+  actions: {
+    create: true,
+    update: true,
+    delete: true,
+    duplicate: false,
+    bulk: true
+  },
+  
+  // Permissions
+  permissions: {
+    create: 'workspace.admin',
+    update: 'team.member',
+    delete: 'workspace.admin'
+  },
+  
+  // Business Logic
+  businessLogic: {
+    beforeCreate: (data) => {
+      // Custom validation or transformations
+      return data;
+    },
+    afterUpdate: (data) => {
+      // Custom post-update logic
+      return data;
+    }
+  }
+};
+
+// 4. Export SSOT
+export default TEAM_SCHEMA;
+```
+
+## Factory System Integration
+
+The factory system auto-generates:
+- **API Handlers** - From `actionPrefix` (e.g., `team.create`, `team.list`)
+- **Frontend Hooks** - From `actionPrefix` (e.g., `team` hook)
+- **IndexedDB Stores** - From `databaseKey` (e.g., `teams` table)
+- **React Hooks** - From `actionPrefix` (e.g., `useTeam()`)
+
+## Table Layout Results
+
+With the example above, you get:
+- **Desktop:** `Name (auto) | Identifier (sm) | Description (xl) | Icon (xs) | Timezone (md) | Private (xs)`
+- **Mobile:** `Name (full) | Identifier (sm) | Icon (xs) | Private (xs)`
+
+## ✅ KEEP in SSOT (Resource-Specific Configuration)
+
+```typescript
+// 1. Factory Integration (REQUIRED)
+databaseKey: 'teams',      // IndexedDB table name
+endpoint: 'teams',         // API endpoint
+actionPrefix: 'team',      // Used by DatabaseFactory
+name: { singular: 'Team', plural: 'Teams' }
+
+// 2. Database Schema Definition
+export const RESOURCE_DATABASE_SCHEMA = {
+  model: 'Team',
+  fields: {
+    name: { type: 'String' },
+    identifier: { type: 'String', unique: true },
+    // ... unique fields per resource
+  },
+  relations: {
+    workspace: { type: 'belongsTo', model: 'Workspace' },
+    members: { type: 'hasMany', model: 'WorkspaceMember' }
+  }
+};
+
+// 3. Field Definitions with Responsive Control
+fields: [
+  {
+    key: 'name',
+    label: 'Name', 
+    type: 'text',
+    required: true,
+    mobile: { showInTable: true, tableWidth: 'full' },
+    desktop: { showInTable: true, tableWidth: 'auto' },
+    validation: [
+      { type: 'required', message: 'Name is required' },
+      { type: 'minLength', value: 2, message: 'Too short' }
+    ]
+  },
+  // ... resource-specific fields
+]
+
+// 4. Validation Schema
+export const ResourceValidationSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  // ... resource-specific validation
+});
+
+// 5. Custom Business Logic
+export const RESOURCE_BUSINESS_LOGIC = {
+  beforeCreate: (data) => { /* custom logic */ },
+  afterUpdate: (data) => { /* custom logic */ }
+};
+```
+
+## ❌ REMOVE from SSOT (Factory-Generated)
+
+```typescript
+// DON'T include these - let factories generate them:
+
+// ❌ API Handlers - DatabaseFactory already generates these
+export const TEAM_HANDLERS = {
+  async list(context) { ... },
+  async create(context, data) { ... }
+};
+
+// ❌ Query Keys - Should be factory-generated from actionPrefix
+export const TEAM_QUERY_CONFIG = {
+  queryKeys: {
+    all: ['teams'],
+    lists: () => ['teams', 'list']
+  }
+};
+
+// ❌ IndexedDB Schema - Should be derived from databaseKey + fields
+export const TEAM_OFFLINE_SCHEMA = {
+  tableName: 'teams',
+  keyPath: 'id'
+};
+
+// ❌ React Hooks - Should be factory-generated from actionPrefix
+export const TEAM_HOOKS = {
+  useTeams: () => ({ queryKey: ['teams', 'list'] }),
+  useCreateTeam: () => ({ mutationKey: ['teams', 'create'] })
+};
+
+// ❌ Data Transformers - Should be factory-generated from fields
+export const TEAM_TRANSFORMERS = {
+  toClient: (data) => ({ ...data }),
+  toServer: (data) => ({ ...data })
+};
+
+// ❌ Legacy Config Objects - Violates SSOT principle
+export const teamConfig = {
+  name: 'Team',
+  actionPrefix: 'team',
+  // ... duplicate configuration
+};
+```
+
+## Migration Steps
+
+1. **Update factory integration** - Use `databaseKey`, `actionPrefix`, `endpoint`, `name`
+2. **Add responsive field config** - Add `mobile` and `desktop` to each field
+3. **Configure table visibility** - Set `showInTable` for mobile/desktop
+4. **Set column widths** - Use `tableWidth` for responsive sizing
+5. **Order fields** - Arrange fields array in desired column order
+6. **Remove legacy configs** - Delete old config objects
+7. **Add database schema** - Define complete database structure
+8. **Add business logic** - Include custom operations
+9. **Add relations** - Define how resources relate
+10. **Consolidate validation** - Single validation schema
+11. **Export SSOT** - Single default export
+
+## Benefits
+
+- **🎯 Single Source of Truth** - Everything about a resource in one file
+- **📱 Responsive Tables** - Full mobile/desktop control
+- **🔄 Factory Compatible** - Auto-generates all CRUD operations
+- **📊 Column Control** - Precise table layout control
+- **🛡️ Type Safe** - Full TypeScript support
+- **📈 Maintainable** - No duplication across files
+- **🚀 Scalable** - Easy to add new resources
+
+## File Naming Convention
+
+- `features/teams/teams.schema.ts` - Core resources
+- `features/admin/labels/labels.schema.ts` - Admin resources  
+- Always use `.schema.ts` extension for SSOT files
+
+## Common Patterns
+
+### Simple Text Field
+```typescript
+{
+  key: 'name',
+  label: 'Name',
+  type: 'text',
+  required: true,
+  mobile: { showInTable: true, tableWidth: 'full' },
+  desktop: { showInTable: true, tableWidth: 'auto', sortable: true },
+  validation: [
+    { type: 'required', message: 'Name is required' }
+  ]
+}
+```
+
+### Mobile-Hidden Field
+```typescript
+{
+  key: 'description',
+  label: 'Description',
+  type: 'textarea',
+  mobile: { showInTable: false },
+  desktop: { showInTable: true, tableWidth: 'xl' }
+}
+```
+
+### Icon Field
+```typescript
+{
+  key: 'icon',
+  label: 'Icon',
+  type: 'icon',
+  mobile: { showInTable: true, tableWidth: 'xs', displayFormat: 'icon' },
+  desktop: { showInTable: true, tableWidth: 'xs' }
+}
+```
+
+### Select Field with Options
+```typescript
+{
+  key: 'status',
+  label: 'Status',
+  type: 'select',
+  required: true,
+  mobile: { showInTable: true, tableWidth: 'sm', displayFormat: 'badge' },
+  desktop: { showInTable: true, tableWidth: 'sm', sortable: true, filterable: true },
+  options: [
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' }
+  ]
+}
+```
+
+## Troubleshooting
+
+### Resource Not Found Error
+```
+Resource hook not found for "teams". Available hooks: team, project, label, ...
+```
+**Fix:** Check that `actionPrefix` is singular (`team`, not `teams`)
+
+### Column Not Showing
+**Check:**
+1. `showInTable: true` for target device
+2. Field is in `schema.fields` array
+3. No TypeScript errors in schema
+
+### Wrong Column Order
+**Fix:** Reorder fields in `schema.fields` array
+
+### Factory Not Generating Handlers
+**Check:**
+1. Schema is exported from `features/index.ts`
+2. `actionPrefix` is set correctly
+3. Factory is importing from `features/` directory
+
+This guide provides complete control over schema configuration with zero ambiguity. Every aspect is clearly defined with specific examples and troubleshooting steps.
+description:
+globs:
+alwaysApply: false
+---

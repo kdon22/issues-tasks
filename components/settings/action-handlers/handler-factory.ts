@@ -29,6 +29,7 @@ export function createResourceHandlers(actionPrefix: string): Record<string, Act
         'team': 'Team',
         'project': 'Project', 
         'label': 'Label',
+        'labelGroup': 'LabelGroup',
         'member': 'Member',
         'issueType': 'IssueType',
         'statusFlow': 'StatusFlow',

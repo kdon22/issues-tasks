@@ -152,6 +152,7 @@ async function handleAction({
   }
   
   const handler = (actionHandlers as Record<string, any>)[action];
+  
   if (!handler) throw new Error(`Unknown action: ${action}`);
   
   // All CRUD operations are now handled by the factory!

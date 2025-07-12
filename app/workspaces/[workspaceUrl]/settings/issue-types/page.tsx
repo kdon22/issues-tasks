@@ -1,15 +1,12 @@
 "use client";
 
-import { ResourceSettingsPage, generateResourceConfig } from '@/components/settings/resource-settings-page';
+import { ResourceSettingsPage } from '@/components/resource-settings/resource-settings-page';
+import { ISSUE_TYPE_SCHEMA } from '@/features/admin/issue-types/schema';
 
 export default function IssueTypesPage() {
-  const config = generateResourceConfig('issueType');
-  
   return (
     <ResourceSettingsPage
-      config={config}
-      title="Issue Types"
-      description="Manage issue types in your workspace"
+      schema={ISSUE_TYPE_SCHEMA}
     />
   );
 } 

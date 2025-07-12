@@ -1,15 +1,12 @@
 "use client";
 
-import { ResourceSettingsPage, generateResourceConfig } from '@/components/settings/resource-settings-page';
+import { ResourceSettingsPage } from '@/components/resource-settings/resource-settings-page';
+import { MEMBER_SCHEMA } from '@/features/members/members.schema';
 
 export default function MembersPage() {
-  const config = generateResourceConfig('member');
-  
   return (
     <ResourceSettingsPage
-      config={config}
-      title="Members"
-      description="Manage workspace members and their roles"
+      schema={MEMBER_SCHEMA}
     />
   );
 } 

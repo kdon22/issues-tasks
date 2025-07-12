@@ -1,15 +1,12 @@
 "use client";
 
-import { ResourceSettingsPage, generateResourceConfig } from '@/components/settings/resource-settings-page';
+import { ResourceSettingsPage } from '@/components/resource-settings/resource-settings-page';
+import { TEAM_SCHEMA } from '@/features/teams/teams.schema';
 
 export default function TeamsPage() {
-  const config = generateResourceConfig('team');
-  
   return (
     <ResourceSettingsPage
-      config={config}
-      title="Teams"
-      description="Manage teams in your workspace"
+      schema={TEAM_SCHEMA}
     />
   );
 } 

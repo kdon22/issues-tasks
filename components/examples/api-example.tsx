@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api/client';
+import { createActionClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,14 +13,17 @@ export function ApiExample() {
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Create action client instance
+  const client = createActionClient('demo-workspace');
+
   // Load data - same pattern for all resources!
   const loadData = async () => {
     setLoading(true);
     try {
       const [issuesRes, projectsRes, teamsRes] = await Promise.all([
-        api.issues.list({ limit: 5 }),
-        api.projects.list({ limit: 5 }),
-        api.teams.list({ limit: 5 }),
+        client.issue.list(),
+        client.project.list(),
+        client.team.list(),
       ]);
 
       setIssues(issuesRes.data || []);
@@ -36,7 +39,7 @@ export function ApiExample() {
   // Create issue example
   const createIssue = async () => {
     try {
-      const result = await api.issues.create({
+      const result = await client.issue.create({
         title: 'Test Issue',
         description: 'Created via API',
         priority: 'medium',

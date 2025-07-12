@@ -1,15 +1,12 @@
 "use client";
 
-import { ResourceSettingsPage, generateResourceConfig } from '@/components/settings/resource-settings-page';
+import { ResourceSettingsPage } from '@/components/resource-settings/resource-settings-page';
+import { STATE_SCHEMA } from '@/features/admin/statuses';
 
 export default function StatusesPage() {
-  const config = generateResourceConfig('state');
-  
   return (
     <ResourceSettingsPage
-      config={config}
-      title="Statuses"
-      description="Manage status states in your workspace"
+      schema={STATE_SCHEMA}
     />
   );
 } 

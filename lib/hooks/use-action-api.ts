@@ -1,3 +1,5 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCurrentWorkspace } from './use-current-workspace';
 import { createActionClient, ActionClient, ActionRequest, ActionResponse } from '@/lib/api/action-client';
@@ -43,7 +45,9 @@ export function useActionClient(): ActionClient | null {
 // Generic resource hooks factory
 export function createResourceHooks<T = any>(actionPrefix: string) {
   return {
-    useList: () => useActionQuery<T[]>(`${actionPrefix}.list`),
+    useList: () => {
+      return useActionQuery<T[]>(`${actionPrefix}.list`);
+    },
     
     useGet: (id?: string) => useActionQuery<T>(`${actionPrefix}.get`, { 
       enabled: !!id,
@@ -55,10 +59,12 @@ export function createResourceHooks<T = any>(actionPrefix: string) {
       const mutation = useActionMutation({ optimisticUpdate: true });
       return {
         ...mutation,
-        create: (data: any) => mutation.mutate({
-          action: `${actionPrefix}.create`,
-          data
-        })
+        create: async (data: any) => {
+          return mutation.mutateAsync({
+            action: `${actionPrefix}.create`,
+            data
+          });
+        }
       };
     },
     
@@ -66,11 +72,13 @@ export function createResourceHooks<T = any>(actionPrefix: string) {
       const mutation = useActionMutation({ optimisticUpdate: true });
       return {
         ...mutation,
-        update: (id: string, data: any) => mutation.mutate({
-          action: `${actionPrefix}.update`,
-          resourceId: id,
-          data
-        })
+        update: async (id: string, data: any) => {
+          return mutation.mutateAsync({
+            action: `${actionPrefix}.update`,
+            resourceId: id,
+            data
+          });
+        }
       };
     },
     
@@ -78,7 +86,7 @@ export function createResourceHooks<T = any>(actionPrefix: string) {
       const mutation = useActionMutation({ optimisticUpdate: true });
       return {
         ...mutation,
-        delete: (id: string) => mutation.mutate({
+        delete: async (id: string) => mutation.mutateAsync({
           action: `${actionPrefix}.delete`,
           resourceId: id
         })
@@ -93,6 +101,7 @@ export const resourceHooks = {
   team: createResourceHooks<Team>('team'),
   project: createResourceHooks<Project>('project'),
   label: createResourceHooks<Label>('label'),
+  labelGroup: createResourceHooks<BaseResource>('labelGroup'),
   member: createResourceHooks<Member>('member'),
   issueType: createResourceHooks<IssueType>('issueType'),
   statusFlow: createResourceHooks<StatusFlow>('statusFlow'),
@@ -133,9 +142,12 @@ export function useActionMutation<T = any>(
       }
       
       const response = await client.executeAction<T>(request);
+      
       if (!response.success) {
+        console.error('❌ Action failed:', response.error);
         throw new Error(response.error || 'Action failed');
       }
+      
       return response.data!;
     },
     onMutate: async (variables) => {

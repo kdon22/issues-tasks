@@ -15,18 +15,21 @@ export {
   routePrefetcher
 } from './route-prefetching';
 
-// Legacy exports removed - use action-based hooks instead:
-// - useTeams, useProjects, useLabels, etc. from @/lib/hooks
+// Legacy factory system removed - now using:
+// - Auto-generated CRUD handlers from DatabaseFactory
+// - Feature-based configs in /features/ instead of /lib/api/configs/
 // - Single action endpoint for all operations
 // - Ultra-fast IndexedDB caching with offline-first functionality
 
-// Performance monitoring utilities (simplified)
+// Performance monitoring utilities
 export const performance = {
   // Get basic performance stats
   async getStats() {
     return {
       system: 'action-based',
-      status: 'active'
+      status: 'active',
+      handlers: 'auto-generated',
+      caching: 'indexeddb'
     };
   },
 

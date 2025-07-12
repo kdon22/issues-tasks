@@ -1,11 +1,10 @@
-// Export only the config objects - handlers are auto-generated!
-export { memberConfig } from './member';
-export { teamConfig } from './team';
-export { labelConfig } from './label';
-export { projectConfig } from './project';
-export { issueTypeConfig } from './issueType';
-export { fieldSetConfig } from './fieldSet';
-export { statusFlowConfig } from './statusFlow';
-export { stateConfig } from './state';
-export { issueConfig } from './issue';
-export { commentConfig } from './comment'; 
+// DEPRECATED: This file is deprecated and should not be used
+// Use direct imports from features/ instead
+// 
+// Example:
+// import { TEAM_SCHEMA } from '@/features/teams';
+// import { issueConfig } from '@/features/issues';
+
+// Only exporting what actually exists to prevent build errors
+export { issueConfig } from '../../../features/issues';
+export { commentConfig } from '../../../features/comments'; 

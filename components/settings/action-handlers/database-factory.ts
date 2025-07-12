@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import * as resourceConfigs from '../resource-configs';
+import * as resourceConfigs from '../../../features';
 
 // Action context interface
 interface ActionContext {
@@ -27,14 +27,13 @@ export class DatabaseFactory {
     Object.values(resourceConfigs).forEach((config: any) => {
       if (config?.actionPrefix) {
         const resourceConfig: ResourceConfig = {
-          name: config.name,
+          name: config.name?.singular || config.name || 'Resource',
           actionPrefix: config.actionPrefix,
           prismaModel: this.derivePrismaModelName(config.actionPrefix),
           workspaceIdField: 'workspaceId'
         };
         
         this.registerResource(resourceConfig);
-        console.log(`🏭 Auto-registered resource: ${config.actionPrefix} -> ${resourceConfig.prismaModel}`);
       }
     });
   }
@@ -47,7 +46,8 @@ export class DatabaseFactory {
       'statusFlow': 'statusFlow',
       'fieldSet': 'fieldSet',
       'state': 'state',
-      'reaction': 'commentReaction'
+      'reaction': 'commentReaction',
+      'labelGroup': 'labelGroup'
     };
 
     // Return mapped name or default to actionPrefix
@@ -68,6 +68,8 @@ export class DatabaseFactory {
 
     const model = (prisma as any)[config.prismaModel];
     if (!model) {
+      console.error(`❌ Prisma model not found: ${config.prismaModel}`);
+      console.error('❌ Available models:', Object.keys(prisma));
       throw new Error(`Prisma model not found: ${config.prismaModel}`);
     }
 
@@ -78,30 +80,7 @@ export class DatabaseFactory {
           throw new Error('Invalid workspace context');
         }
 
-        // Handle special cases that don't have direct workspaceId
-        if (config.actionPrefix === 'state') {
-          // State doesn't have workspaceId, it's related through statusFlow
-          const createData = {
-            name: data.name,
-            description: data.description,
-            color: data.color,
-            type: data.type,
-            position: data.position || 0,
-            statusFlowId: data.statusFlowId
-          };
-
-          return await model.create({
-            data: createData,
-            ...this.getIncludeOptions(config.actionPrefix)
-          });
-        }
-
-        const createData = {
-          ...data,
-          workspaceId: context.workspace.id,
-        };
-
-        // Handle special cases
+        // Handle special cases first
         if (config.actionPrefix === 'member') {
           return this.createMemberWithUserHandling(data, context);
         }
@@ -113,6 +92,13 @@ export class DatabaseFactory {
         if (config.actionPrefix === 'project') {
           return this.createProjectWithIdentifier(data, context);
         }
+
+        if (config.actionPrefix === 'fieldSet') {
+          return this.createFieldSetWithConfigurations(data, context);
+        }
+
+        // Process create data generically
+        const createData = this.processCreateData(data, context);
 
         return await model.create({
           data: createData,
@@ -128,27 +114,17 @@ export class DatabaseFactory {
 
         const where = this.buildWhereClause(id, context, config);
         
-        // Handle special cases that don't have direct workspaceId
-        if (config.actionPrefix === 'state') {
-          // For state updates, we only update the direct fields
-          const updateData = {
-            name: data.name,
-            description: data.description,
-            color: data.color,
-            type: data.type,
-            position: data.position
-          };
-
-          return await model.update({
-            where,
-            data: updateData,
-            ...this.getIncludeOptions(config.actionPrefix)
-          });
+        // Handle special cases first
+        if (config.actionPrefix === 'fieldSet') {
+          return this.updateFieldSetWithConfigurations(id, data, context);
         }
+        
+        // Process update data to handle relations properly
+        const updateData = this.processUpdateData(data, config.actionPrefix);
         
         return await model.update({
           where,
-          data,
+          data: updateData,
           ...this.getIncludeOptions(config.actionPrefix)
         });
       },
@@ -207,14 +183,7 @@ export class DatabaseFactory {
       };
     }
 
-    if (config.actionPrefix === 'state') {
-      return {
-        id,
-        statusFlow: {
-          workspaceId: context.workspace.id
-        }
-      };
-    }
+
 
     if (config.actionPrefix === 'comment') {
       return {
@@ -244,10 +213,32 @@ export class DatabaseFactory {
 
   // Build where clause for list operations
   private static buildListWhereClause(context: ActionContext, config: ResourceConfig) {
+    if (config.actionPrefix === 'member') {
+      return {
+        workspaceId: context.workspace.id
+      };
+    }
+
     if (config.actionPrefix === 'state') {
       return {
-        statusFlow: {
+        workspaceId: context.workspace.id
+      };
+    }
+
+    if (config.actionPrefix === 'comment') {
+      return {
+        issue: {
           workspaceId: context.workspace.id
+        }
+      };
+    }
+
+    if (config.actionPrefix === 'reaction') {
+      return {
+        comment: {
+          issue: {
+            workspaceId: context.workspace.id
+          }
         }
       };
     }
@@ -255,6 +246,50 @@ export class DatabaseFactory {
     return {
       workspaceId: context.workspace.id
     };
+  }
+
+  // Process create data generically
+  private static processCreateData(data: any, context: ActionContext): any {
+    // Create a copy of the data to avoid mutations
+    const processedData = { ...data };
+    
+    // Add workspace context
+    processedData.workspaceId = context.workspace.id;
+    
+    // Remove system fields that shouldn't be set on create
+    delete processedData.id;
+    delete processedData.createdAt;
+    delete processedData.updatedAt;
+    
+    // Remove undefined and null values to avoid Prisma errors
+    Object.keys(processedData).forEach(key => {
+      if (processedData[key] === undefined || processedData[key] === null || processedData[key] === '') {
+        delete processedData[key];
+      }
+    });
+    
+    return processedData;
+  }
+
+  // Process update data to handle relations and special fields generically
+  private static processUpdateData(data: any, actionPrefix: string): any {
+    // Create a copy of the data to avoid mutations
+    const processedData = { ...data };
+    
+    // Remove fields that shouldn't be updated directly
+    delete processedData.id;
+    delete processedData.createdAt;
+    delete processedData.updatedAt;
+    delete processedData.workspaceId; // This is set by context, not by user input
+    
+    // Remove undefined and null values to avoid Prisma errors
+    Object.keys(processedData).forEach(key => {
+      if (processedData[key] === undefined || processedData[key] === null || processedData[key] === '') {
+        delete processedData[key];
+      }
+    });
+    
+    return processedData;
   }
 
   // Get include options for complex relations
@@ -341,6 +376,25 @@ export class DatabaseFactory {
       state: {
         include: {
           statusFlow: true
+        }
+      },
+      labelGroup: {
+        include: {
+          labels: {
+            orderBy: { position: 'asc' }
+          },
+          _count: {
+            select: {
+              labels: true
+            }
+          }
+        }
+      },
+      label: {
+        include: {
+          group: {
+            select: { id: true, name: true, color: true }
+          }
         }
       }
     };
@@ -467,21 +521,140 @@ export class DatabaseFactory {
     });
   }
 
+  // Special handling for field set creation with configurations
+  private static async createFieldSetWithConfigurations(data: any, context: ActionContext) {
+    // Process the basic field set data (excluding configurations)
+    const { configurations, ...fieldSetData } = data;
+    
+    // Process create data generically
+    const createData = this.processCreateData(fieldSetData, context);
+    
+    // Handle configurations separately if provided
+    let finalCreateData: any = createData;
+    
+    if (configurations && Array.isArray(configurations)) {
+      // Transform configurations for Prisma nested create
+      const configurationsData = configurations.map(config => ({
+        fieldKey: config.fieldKey,
+        isRequired: config.isRequired,
+        isVisible: config.isVisible || true,
+        displayOrder: config.displayOrder,
+        context: config.context || 'create',
+        showOnSubtask: config.showOnSubtask,
+        showOnNewIssue: config.showOnNewIssue,
+      }));
+
+      finalCreateData.configurations = {
+        create: configurationsData
+      };
+    }
+
+    try {
+      const result = await prisma.fieldSet.create({
+        data: finalCreateData,
+        include: {
+          configurations: {
+            orderBy: { displayOrder: 'asc' }
+          },
+          _count: {
+            select: {
+              issueTypes: true
+            }
+          }
+        }
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ DatabaseFactory - Create failed:', error);
+      throw error;
+    }
+  }
+
+  // Special handling for field set updates with configurations
+  private static async updateFieldSetWithConfigurations(id: string, data: any, context: ActionContext) {
+    // Process the basic field set data (excluding configurations)
+    const { configurations, ...fieldSetData } = data;
+    
+    // Remove fields that shouldn't be updated directly
+    delete fieldSetData.id;
+    delete fieldSetData.createdAt;
+    delete fieldSetData.updatedAt;
+    delete fieldSetData.workspaceId;
+    delete fieldSetData._count;
+    
+    // Remove undefined and null values
+    Object.keys(fieldSetData).forEach(key => {
+      if (fieldSetData[key] === undefined || fieldSetData[key] === null || fieldSetData[key] === '') {
+        delete fieldSetData[key];
+      }
+    });
+
+    // Handle configurations separately if provided
+    let updateData: any = fieldSetData;
+    
+    if (configurations && Array.isArray(configurations)) {
+      // Transform configurations for Prisma nested update
+      const configurationsData = configurations.map(config => ({
+        fieldKey: config.fieldKey,
+        isRequired: config.isRequired,
+        isVisible: config.isVisible || true,
+        displayOrder: config.displayOrder,
+        context: config.context || 'create',
+        showOnSubtask: config.showOnSubtask,
+        showOnNewIssue: config.showOnNewIssue,
+      }));
+
+      updateData.configurations = {
+        deleteMany: {}, // Delete all existing configurations
+        create: configurationsData // Create new configurations
+      };
+    }
+
+    try {
+      const result = await prisma.fieldSet.update({
+        where: {
+          id,
+          workspaceId: context.workspace.id
+        },
+        data: updateData,
+        include: {
+          configurations: {
+            orderBy: { displayOrder: 'asc' }
+          },
+          _count: {
+            select: {
+              issueTypes: true
+            }
+          }
+        }
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ DatabaseFactory - Update failed:', error);
+      throw error;
+    }
+  }
+
   // Generate all action handlers for all auto-discovered resources
   static generateAllHandlers(): Record<string, Function> {
     const handlers: Record<string, Function> = {};
 
     this.resourceConfigs.forEach((config, actionPrefix) => {
-      const operations = this.createResourceOperations(actionPrefix);
-      
-      handlers[`${actionPrefix}.create`] = operations.create;
-      handlers[`${actionPrefix}.update`] = operations.update;
-      handlers[`${actionPrefix}.delete`] = operations.delete;
-      handlers[`${actionPrefix}.list`] = operations.list;
-      handlers[`${actionPrefix}.get`] = operations.get;
+      try {
+        const operations = this.createResourceOperations(actionPrefix);
+        
+        handlers[`${actionPrefix}.create`] = operations.create;
+        handlers[`${actionPrefix}.update`] = operations.update;
+        handlers[`${actionPrefix}.delete`] = operations.delete;
+        handlers[`${actionPrefix}.list`] = operations.list;
+        handlers[`${actionPrefix}.get`] = operations.get;
+      } catch (error) {
+        console.error(`❌ Failed to generate handlers for ${actionPrefix}:`, error);
+      }
     });
 
-    console.log(`🚀 Generated ${Object.keys(handlers).length} handlers for ${this.resourceConfigs.size} resources`);
     return handlers;
   }
 }

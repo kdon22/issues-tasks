@@ -1,19 +1,29 @@
-"use client";
+// "use client";
 
-import { SettingsPageLayout } from '@/components/layout/settings-page-layout';
+// import { ResourceSettingsPage } from '@/components/resource-settings/resource-settings-page';
 
-export default function IssueFieldsPage() {
-  return (
-    <SettingsPageLayout title="Issue Fields" description="Configure field sets for different issue types and contexts">
-      <div className="bg-card rounded-lg border p-8 text-center">
-        <h3 className="text-lg font-medium mb-2">Issue Fields Configuration</h3>
-        <p className="text-muted-foreground mb-4">
-          This page requires specialized implementation for field set management and configuration.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          The issue fields management will be implemented with custom forms for field set configuration.
-        </p>
-      </div>
-    </SettingsPageLayout>
-  );
-} 
+// // Simple field sets schema since config file was removed
+// const FIELD_SET_SCHEMA = {
+//   key: 'fieldSet',
+//   endpoint: 'field-sets',
+//   actionPrefix: 'fieldSet',
+//   name: { singular: 'Field Set', plural: 'Field Sets' },
+//   display: {
+//     title: 'Field Sets',
+//     description: 'Manage custom field configurations',
+//     icon: 'Settings'
+//   },
+//   fields: [
+//     { key: 'name', label: 'Name', type: 'text' as const, required: true },
+//     { key: 'description', label: 'Description', type: 'textarea' as const, required: false }
+//   ],
+//   search: { fields: ['name'], placeholder: 'Search field sets...' },
+//   actions: { create: true, update: true, delete: true },
+//   mobile: { cardFormat: 'compact', primaryField: 'name', secondaryFields: ['description'], showSearch: true, showFilters: false, fabPosition: 'bottom-right' },
+//   desktop: { sortField: 'name', sortOrder: 'asc', editableField: 'name', rowActions: true, bulkActions: false },
+//   permissions: { create: 'workspace.admin', update: 'workspace.admin', delete: 'workspace.admin' }
+// };
+
+// export default function IssueFieldsPage() {
+//   return <ResourceSettingsPage schema={FIELD_SET_SCHEMA} />;
+// } 
